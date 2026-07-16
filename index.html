@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>暑假打卡</title>
+<style>
+/* ===== Reset & Base ===== */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #ededed;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ===== Phone Frame (desktop only) ===== */
+.phone-frame {
+  width: 100%;
+  max-width: 390px;
+  height: 100vh;
+  max-height: 844px;
+  background: #f7f7f7;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(0,0,0,0.12);
+}
+@media (min-width: 500px) {
+  body { background: #1a1a1a; }
+  .phone-frame {
+    border-radius: 40px;
+    border: 8px solid #2a2a2a;
+    height: 844px;
+  }
+}
+
+/* ===== Status Bar ===== */
+.status-bar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: #07c160;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.status-bar .time { font-size: 15px; }
+.status-bar .icons { display: flex; gap: 6px; align-items: center; font-size: 12px; }
+
+/* ===== Nav Bar ===== */
+.nav-bar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #07c160;
+  color: white;
+  font-size: 17px;
+  font-weight: 600;
+  flex-shrink: 0;
+  position: relative;
+}
+.nav-bar .nav-title { letter-spacing: 1px; }
+
+/* ===== Content Area ===== */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 70px;
+}
+.content::-webkit-scrollbar { display: none; }
+
+/* ===== Pages ===== */
+.page { display: none; padding: 12px; }
+.page.active { display: block; }
+
+/* ===== Cards ===== */
+.card {
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.card-header {
+  padding: 14px 16px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-header .card-icon { font-size: 20px; }
+.card-header .card-title { font-size: 16px; font-weight: 600; color: #333; }
+.card-header .card-tag {
+  margin-left: auto;
+  font-size: 11px;
+  color: #999;
+  background: #f5f5f5;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+.card-body { padding: 0 16px 14px; }
+
+/* ===== Hero Card (Today) ===== */
+.hero-card {
+  background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
+  border-radius: 16px;
+  padding: 20px 18px;
+  color: white;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-card::after {
+  content: '';
+  position: absolute;
+  right: -30px; top: -30px;
+  width: 120px; height: 120px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 50%;
+}
+.hero-card::before {
+  content: '';
+  position: absolute;
+  right: 20px; bottom: -40px;
+  width: 80px; height: 80px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 50%;
+}
+.hero-date { font-size: 14px; opacity: 0.85; margin-bottom: 4px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+.hero-date .date-name { font-weight: 600; }
+.hero-date .date-edit { font-size: 10px; opacity: 0.5; }
+.hero-big-date { font-size: 28px; font-weight: 700; margin-bottom: 2px; }
+.hero-weekday { font-size: 14px; opacity: 0.85; margin-bottom: 14px; }
+.hero-progress-row { display: flex; align-items: center; gap: 14px; }
+.hero-ring {
+  width: 64px; height: 64px;
+  position: relative;
+  flex-shrink: 0;
+}
+.hero-ring svg { transform: rotate(-90deg); }
+.hero-ring .ring-text {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+}
+.hero-ring .ring-text small { font-size: 10px; opacity: 0.7; }
+.hero-stats { flex: 1; }
+.hero-stat-line { font-size: 13px; opacity: 0.9; margin-bottom: 4px; }
+.hero-stat-line strong { font-size: 20px; font-weight: 700; }
+
+/* ===== Daily Task List ===== */
+.task-list { }
+.task-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 0.5px solid #f0f0f0;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.task-row:last-child { border-bottom: none; }
+.task-row:active { background: #f9f9f9; }
+.task-check {
+  width: 24px; height: 24px;
+  border: 2px solid #ddd;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: all 0.2s;
+  font-size: 14px;
+  color: transparent;
+}
+.task-row.done .task-check {
+  background: #07c160;
+  border-color: #07c160;
+  color: white;
+}
+.task-info { flex: 1; min-width: 0; }
+.task-name { font-size: 15px; font-weight: 500; color: #333; line-height: 1.4; }
+.task-row.done .task-name { color: #999; text-decoration: line-through; }
+.task-detail { font-size: 12px; color: #999; margin-top: 3px; line-height: 1.4; }
+.task-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  font-weight: 500;
+}
+.badge-math { background: #ffe0e6; color: #ff6a88; }
+.badge-chinese { background: #e0f0ff; color: #5b8def; }
+.badge-eng { background: #e0ffe6; color: #2ecc71; }
+.badge-bilibili { background: #ffe0fa; color: #e91e90; }
+.badge-sport { background: #ffe8d6; color: #e67e22; }
+
+/* ===== Map Summary Cards (Tab 1) ===== */
+.map-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.map-mini-card {
+  background: #f9f9f9;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.map-mini-icon { font-size: 20px; flex-shrink: 0; }
+.map-mini-info { flex: 1; min-width: 0; }
+.map-mini-name { font-size: 12px; color: #666; }
+.map-mini-num { font-size: 16px; font-weight: 700; }
+.map-mini-bar {
+  height: 4px;
+  background: #eee;
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+.map-mini-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+/* ===== Map Page (Tab 2) ===== */
+.map-selector {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.map-selector::-webkit-scrollbar { display: none; }
+.map-tab {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: white;
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.map-tab.active { color: white; border-color: transparent; }
+.map-tab .tab-icon { font-size: 15px; }
+
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  padding: 4px 0;
+}
+.map-station {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2.5px solid #e8e8e8;
+  background: #fafafa;
+  user-select: none;
+}
+.map-station:active { transform: scale(0.92); }
+.map-station .day-num { font-size: 11px; font-weight: 600; color: #aaa; }
+.map-station .star { font-size: 14px; opacity: 0; transition: opacity 0.2s; }
+.map-station.checked .star { opacity: 1; }
+.map-station.checked .day-num { color: white; }
+.map-station.today { border-width: 3px; animation: pulse 2s infinite; }
+@keyframes pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(7,193,96,0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(7,193,96,0); }
+}
+
+/* Map theme colors */
+.mc-read .checked { background: linear-gradient(135deg,#4ecdc4,#44b8ab); border-color: #3aa89f; }
+.mc-read .today { border-color: #4ecdc4; }
+.mc-oral .checked { background: linear-gradient(135deg,#ff6a88,#e8556d); border-color: #d9445c; }
+.mc-oral .today { border-color: #ff6a88; }
+.mc-vert .checked { background: linear-gradient(135deg,#f4a261,#e8912d); border-color: #d07820; }
+.mc-vert .today { border-color: #f4a261; }
+.mc-eng .checked { background: linear-gradient(135deg,#5b8def,#4a7de0); border-color: #3a6cd0; }
+.mc-eng .today { border-color: #5b8def; }
+.mc-cnpreview .checked { background: linear-gradient(135deg,#9b59b6,#8e44ad); border-color: #7d3c98; }
+.mc-cnpreview .today { border-color: #9b59b6; }
+.mc-mathpreview .checked { background: linear-gradient(135deg,#2ecc71,#27ae60); border-color: #1e8449; }
+.mc-mathpreview .today { border-color: #2ecc71; }
+.mc-engpreview .checked { background: linear-gradient(135deg,#3498db,#2980b9); border-color: #1f6dad; }
+.mc-engpreview .today { border-color: #3498db; }
+.mc-engphonics .checked { background: linear-gradient(135deg,#e74c3c,#c0392b); border-color: #a93226; }
+.mc-engphonics .today { border-color: #e74c3c; }
+.mc-rope .checked { background: linear-gradient(135deg,#e67e22,#d35400); border-color: #ba4a00; }
+.mc-rope .today { border-color: #e67e22; }
+
+.map-info-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 4px;
+  font-size: 13px;
+}
+.map-info-bar .progress-text { color: #666; }
+.map-info-bar .progress-text strong { color: #07c160; font-size: 16px; }
+.map-progress-bar {
+  height: 6px;
+  background: #f0f0f0;
+  border-radius: 3px;
+  margin: 0 4px 12px;
+  overflow: hidden;
+}
+.map-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+/* ===== Weekly & Project (Tab 3) ===== */
+.section-label {
+  font-size: 13px;
+  color: #999;
+  padding: 8px 4px;
+  font-weight: 500;
+}
+.task-row-large {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 0.5px solid #f0f0f0;
+  cursor: pointer;
+}
+.task-row-large:last-child { border-bottom: none; }
+.task-row-large:active { background: #f9f9f9; }
+.task-row-large .task-check {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  border-width: 2px;
+}
+.task-row-large.done .task-check {
+  background: #07c160;
+  border-color: #07c160;
+}
+
+/* ===== Settings ===== */
+.settings-row {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  cursor: pointer;
+  border-bottom: 0.5px solid #f0f0f0;
+  font-size: 15px;
+  color: #333;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row:active { background: #f9f9f9; }
+.settings-row .s-icon { font-size: 18px; margin-right: 10px; }
+.settings-row .s-arrow { margin-left: auto; color: #ccc; font-size: 14px; }
+.settings-row .s-hint { margin-left: auto; color: #999; font-size: 14px; }
+.settings-row.danger { color: #fa5151; }
+
+/* Modal backdrop */
+.modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 9998;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.modal-backdrop.show { display: flex; }
+.modal-box {
+  background: white;
+  border-radius: 16px;
+  padding: 24px 20px 20px;
+  width: 280px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
+.modal-box .modal-title { font-size: 17px; font-weight: 600; color: #333; margin-bottom: 16px; }
+.modal-box .modal-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 16px;
+  text-align: center;
+  outline: none;
+  font-family: inherit;
+  color: #333;
+  transition: border-color 0.2s;
+}
+.modal-box .modal-input:focus { border-color: #07c160; }
+.modal-box .modal-buttons { display: flex; gap: 10px; margin-top: 16px; }
+.modal-box .modal-btn {
+  flex: 1;
+  padding: 10px 0;
+  border-radius: 10px;
+  border: none;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+.modal-btn.cancel { background: #f5f5f5; color: #666; }
+.modal-btn.confirm { background: #07c160; color: white; }
+
+/* ===== Bottom Tab Bar ===== */
+.tab-bar {
+  height: 60px;
+  display: flex;
+  background: white;
+  border-top: 0.5px solid #e0e0e0;
+  flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tab-item .tab-icon-large { font-size: 22px; transition: transform 0.2s; }
+.tab-item .tab-label { font-size: 10px; color: #999; }
+.tab-item.active .tab-label { color: #07c160; font-weight: 600; }
+.tab-item.active .tab-icon-large { transform: scale(1.1); }
+
+/* ===== Toast ===== */
+.toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.75);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+
+/* ===== Complete Banner ===== */
+.complete-banner {
+  text-align: center;
+  padding: 20px;
+  display: none;
+}
+.complete-banner.show { display: block; }
+.complete-banner .cb-icon { font-size: 48px; margin-bottom: 8px; }
+.complete-banner .cb-text { font-size: 16px; color: #07c160; font-weight: 600; }
+.complete-banner .cb-sub { font-size: 13px; color: #999; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <span class="time" id="statusTime">9:00</span>
+    <span class="icons">📶 📡 🔋</span>
+  </div>
+
+  <!-- Nav Bar -->
+  <div class="nav-bar">
+    <span class="nav-title" id="navTitle">今日打卡</span>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- ===== Page 1: Today ===== -->
+    <div class="page active" id="pageToday">
+      <!-- Hero -->
+      <div class="hero-card">
+        <div class="hero-date" id="heroDate" onclick="showNameModal()">2026年暑假</div>
+        <div class="hero-big-date" id="heroBigDate">7月14日</div>
+        <div class="hero-weekday" id="heroWeekday">星期二</div>
+        <div class="hero-progress-row">
+          <div class="hero-ring">
+            <svg width="64" height="64">
+              <circle cx="32" cy="32" r="28" stroke="rgba(255,255,255,0.2)" stroke-width="5" fill="none"/>
+              <circle id="ringFill" cx="32" cy="32" r="28" stroke="white" stroke-width="5" fill="none"
+                stroke-dasharray="175.93" stroke-dashoffset="175.93" stroke-linecap="round" style="transition: stroke-dashoffset 0.5s;"/>
+            </svg>
+            <div class="ring-text" id="ringText">0<small>/11</small></div>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat-line">暑假第 <strong id="dayNum">1</strong> 天 / 共45天</div>
+            <div class="hero-stat-line">今日完成 <strong id="todayDone">0</strong> / <span id="todayTotal">11</span> 项</div>
+            <div class="hero-stat-line" id="encourageText">加油打卡吧！💪</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Tasks -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">📋</span>
+          <span class="card-title">今日任务</span>
+          <span class="card-tag" id="dailyTag">0/11</span>
+        </div>
+        <div class="card-body">
+          <div class="task-list" id="dailyTaskList"></div>
+        </div>
+      </div>
+
+      <!-- Map Quick Summary -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">🗺️</span>
+          <span class="card-title">打卡进度</span>
+          <span class="card-tag" id="mapTotalTag">0/360</span>
+        </div>
+        <div class="card-body">
+          <div class="map-summary-grid" id="mapSummaryGrid"></div>
+        </div>
+      </div>
+
+      <!-- Complete Banner -->
+      <div class="complete-banner" id="completeBanner">
+        <div class="cb-icon">🎉</div>
+        <div class="cb-text">今天的任务全部完成啦！</div>
+        <div class="cb-sub">好棒！明天继续加油～</div>
+      </div>
+    </div>
+
+    <!-- ===== Page 2: Maps ===== -->
+    <div class="page" id="pageMaps">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">🗺️</span>
+          <span class="card-title">打卡地图</span>
+          <span class="card-tag">45天挑战</span>
+        </div>
+        <div class="card-body">
+          <div class="map-selector" id="mapSelector"></div>
+          <div class="map-info-bar">
+            <span class="progress-text"><strong id="mapCurDone">0</strong> / 45 天</span>
+            <span class="progress-text" id="mapCurName" style="font-weight:600;color:#333;">📖 阅读</span>
+          </div>
+          <div class="map-progress-bar">
+            <div class="map-progress-fill" id="mapCurFill" style="width:0%; background:#4ecdc4;"></div>
+          </div>
+          <div class="map-grid" id="mapGridContainer"></div>
+          <div style="font-size:11px;color:#bbb;text-align:center;margin-top:12px;">
+            点击圆圈打卡 · 高亮圆圈是今天
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Page 3: More ===== -->
+    <div class="page" id="pageMore">
+      <!-- Weekly Tasks -->
+      <div class="section-label">🔬 生活实践任务</div>
+      <div class="card">
+        <div class="card-body">
+          <div class="task-list" id="weeklyTaskList"></div>
+        </div>
+      </div>
+
+      <!-- Project Tasks -->
+      <div class="section-label">🎯 暑假项目待办</div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">🎯</span>
+          <span class="card-title">项目进度</span>
+          <span class="card-tag" id="projTag">0/6</span>
+        </div>
+        <div class="card-body">
+          <div class="task-list" id="projectTaskList"></div>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div class="section-label">⚙️ 设置</div>
+      <div class="card">
+        <div class="settings-row" onclick="showNameModal()">
+          <span class="s-icon">👦</span>
+          <span>孩子名字</span>
+          <span class="s-hint" id="settingsNameHint">未设置</span>
+          <span class="s-arrow">›</span>
+        </div>
+        <div class="settings-row" onclick="showToast('开始日期：' + getStartDateText())">
+          <span class="s-icon">📅</span>
+          <span>查看开始日期</span>
+          <span class="s-arrow">›</span>
+        </div>
+        <div class="settings-row" onclick="exportData()">
+          <span class="s-icon">📤</span>
+          <span>导出打卡数据</span>
+          <span class="s-arrow">›</span>
+        </div>
+        <div class="settings-row" onclick="manualSave()">
+          <span class="s-icon">💾</span>
+          <span>手动保存数据</span>
+          <span class="s-hint" id="lastSaveHint" style="font-size:12px;">-</span>
+          <span class="s-arrow">›</span>
+        </div>
+        <div class="settings-row danger" onclick="resetAll()">
+          <span class="s-icon">🗑️</span>
+          <span>重置全部记录</span>
+          <span class="s-arrow">›</span>
+        </div>
+      </div>
+
+      <div style="text-align:center;padding:16px;font-size:12px;color:#ccc;" id="footerText">
+        🌞 一升二暑假打卡 · 数据自动保存
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <div class="tab-item active" onclick="switchTab('today')">
+      <span class="tab-icon-large">✅</span>
+      <span class="tab-label">今日打卡</span>
+    </div>
+    <div class="tab-item" onclick="switchTab('maps')">
+      <span class="tab-icon-large">🗺️</span>
+      <span class="tab-label">打卡地图</span>
+    </div>
+    <div class="tab-item" onclick="switchTab('more')">
+      <span class="tab-icon-large">📋</span>
+      <span class="tab-label">任务中心</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Name Modal -->
+<div class="modal-backdrop" id="nameModal">
+  <div class="modal-box">
+    <div class="modal-title">✏️ 设置孩子名字</div>
+    <input class="modal-input" id="nameInput" type="text" placeholder="输入孩子的名字" maxlength="20" />
+    <div class="modal-buttons">
+      <button class="modal-btn cancel" onclick="closeNameModal()">取消</button>
+      <button class="modal-btn confirm" onclick="saveChildName()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== Date Utils =====
+var now = new Date();
+var todayStr = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate());
+var MAP_DAYS = 45;
+var weekdays = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+// ===== Child Name =====
+function getChildName() {
+  return localStorage.getItem('summerChildName') || '';
+}
+function setChildName(name) {
+  localStorage.setItem('summerChildName', name);
+}
+function updateNameDisplay() {
+  var name = getChildName();
+  var heroDate = document.getElementById('heroDate');
+  var settingsHint = document.getElementById('settingsNameHint');
+  if (name) {
+    heroDate.innerHTML = '👦 <span class="date-name">' + name + '</span>的暑假 <span class="date-edit">✏️</span>';
+    heroDate.onclick = showNameModal;
+    settingsHint.textContent = name;
+    settingsHint.style.color = '#333';
+  } else {
+    heroDate.innerHTML = '2026年暑假';
+    heroDate.onclick = showNameModal;
+    settingsHint.textContent = '未设置';
+    settingsHint.style.color = '#999';
+  }
+}
+function showNameModal() {
+  document.getElementById('nameInput').value = getChildName();
+  document.getElementById('nameModal').classList.add('show');
+  setTimeout(function() { document.getElementById('nameInput').focus(); }, 100);
+}
+function closeNameModal() {
+  document.getElementById('nameModal').classList.remove('show');
+}
+function saveChildName() {
+  var name = document.getElementById('nameInput').value.trim();
+  if (name) {
+    setChildName(name);
+    updateNameDisplay();
+    showToast('已保存：' + name);
+  } else {
+    showToast('请输入名字');
+  }
+  closeNameModal();
+}
+
+function getStartDate() {
+  var sd = localStorage.getItem('summerPlanStartDate');
+  if (!sd) { sd = todayStr; localStorage.setItem('summerPlanStartDate', sd); }
+  return sd;
+}
+function getStartDateText() {
+  return getStartDate().replace(/-/g, '年').replace(/-/, '月') + '日';
+}
+function getTodayStation() {
+  var sd = getStartDate();
+  var start = new Date(sd);
+  var diff = Math.floor((now - start) / 86400000) + 1;
+  if (diff < 1) diff = 1;
+  if (diff > MAP_DAYS) diff = MAP_DAYS;
+  return diff;
+}
+
+// ===== Data =====
+var mapConfigs = [
+  { key: 'readMap',        name: '阅读',    icon: '📖', color: '#4ecdc4', theme: 'mc-read',          tag: '语文 · 每天阅读',      detail: '每天阅读30分钟' },
+  { key: 'oralMap',        name: '口算',    icon: '🧮', color: '#ff6a88', theme: 'mc-oral',          tag: '数学 · 每天10道',      detail: '100以内加减法' },
+  { key: 'vertMap',        name: '竖式',    icon: '📝', color: '#f4a261', theme: 'mc-vert',          tag: '数学 · 每天5道',       detail: '限时10分钟' },
+  { key: 'engMap',         name: '英语闯关', icon: '🔤', color: '#5b8def', theme: 'mc-eng',           tag: '英语 · 一起作业',     detail: '每天解锁一关' },
+  { key: 'cnPreviewMap',   name: '语文预习', icon: '📺', color: '#9b59b6', theme: 'mc-cnpreview',     tag: 'B站 · 二年级预习',     detail: 'B站看课文预习视频' },
+  { key: 'mathPreviewMap', name: '数学预习', icon: '📺', color: '#2ecc71', theme: 'mc-mathpreview',   tag: 'B站 · 二年级预习',     detail: 'B站看课文预习视频' },
+  { key: 'engPreviewMap',  name: '英语预习', icon: '📺', color: '#3498db', theme: 'mc-engpreview',    tag: 'B站 · 英语预习',       detail: 'B站看英语预习视频' },
+  { key: 'engPhonicsMap',  name: '自然拼读', icon: '📺', color: '#e74c3c', theme: 'mc-engphonics',    tag: 'B站 · 自然拼读',       detail: 'B站看自然拼读视频' },
+  { key: 'ropeMap',        name: '跳绳',    icon: '🪢', color: '#e67e22', theme: 'mc-rope',          tag: '体育 · 目标200个/分',  detail: '1分钟跳绳目标200个' },
+];
+
+var dailyTasks = [
+  { id: 'd1',  name: '口算10道',       detail: '100以内加减法，使用口算本',            subject: 'math',     subName: '数学' },
+  { id: 'd2',  name: '竖式计算5道',     detail: '限时10分钟，使用小袁AI',               subject: 'math',     subName: '数学' },
+  { id: 'd3',  name: '乘法口诀背诵',     detail: '对口令/数物品，循序渐进',              subject: 'math',     subName: '数学' },
+  { id: 'd7',  name: '认字+审题练习',    detail: '划关键词，文字翻译成数字，用数学计算本', subject: 'math',     subName: '数学' },
+  { id: 'd4',  name: '英语闯关',        detail: '"一起作业"每天解锁一关',               subject: 'eng',      subName: '英语' },
+  { id: 'd6',  name: '阅读30分钟',       detail: '绘本/拼音童话/寓言故事',              subject: 'chinese',  subName: '语文' },
+  { id: 'd8',  name: 'B站 语文预习',     detail: '看二年级语文课文预习视频',              subject: 'bilibili', subName: 'B站' },
+  { id: 'd9',  name: 'B站 数学预习',     detail: '看二年级数学课文预习视频',              subject: 'bilibili', subName: 'B站' },
+  { id: 'd5',  name: 'B站 英语预习',     detail: 'B站看二年级英语预习视频',              subject: 'bilibili', subName: 'B站' },
+  { id: 'd10', name: 'B站 自然拼读',     detail: '看英语自然拼读学习视频',               subject: 'bilibili', subName: 'B站' },
+  { id: 'd11', name: '跳绳练习',         detail: '目标1分钟完成200个',                   subject: 'sport',    subName: '体育' },
+];
+
+var weeklyTasks = [
+  { id: 'w1', name: '人民币购物实践', detail: '参与家庭购物：看标价→付钱→找零' },
+  { id: 'w2', name: '测量实践',       detail: '用尺子量家中物品，感知1厘米/1米' },
+  { id: 'w3', name: '方位认知',       detail: '复习前后左右，利用太阳认识东南西北' },
+  { id: 'w4', name: '数字书写规范',   detail: '规范数字书写，练习完整作答' },
+  { id: 'w5', name: '英语趣味拓展',   detail: '读RAZ/牛津树绘本，或听唱英文儿歌' },
+];
+
+var projectTasks = [
+  { id: 'p1', name: '45天阅读打卡',   detail: '坚持45天阅读打卡，绘本/拼音童话/寓言' },
+  { id: 'p2', name: '古诗配画 x1',    detail: '选一首古诗（如《静夜思》），给古诗配画' },
+  { id: 'p3', name: '暑假日记 x5',    detail: '写3-5句话，拼音搭配汉字，配小插画' },
+  { id: 'p4', name: '英语课本预习',   detail: '下载二上英语电子课本，翻看跟读' },
+  { id: 'p5', name: '审题习惯养成',   detail: '找有用信息→划关键词→翻译成数字（数学）' },
+  { id: 'p6', name: '乘法口诀表通关', detail: '暑假结束前能完整背诵九九乘法表' },
+];
+
+// ===== Storage (with fallback for file:// instability) =====
+function getData() {
+  try {
+    var raw = localStorage.getItem('summerPlanData');
+    if (raw) {
+      var d = JSON.parse(raw);
+      // Migration: old 'map' key → 'readMap'
+      if (d.map && !d.readMap) { d.readMap = d.map; delete d.map; }
+      // Ensure all 8 map keys exist
+      mapConfigs.forEach(function(m) { if (!d[m.key]) d[m.key] = {}; });
+      if (!d.weekly) d.weekly = {};
+      if (!d.project) d.project = {};
+      if (!d.daily) d.daily = {};
+      return d;
+    }
+  } catch(e) {
+    console.error('getData parse error:', e);
+  }
+  var empty = { daily: {}, weekly: {}, project: {}, dailyDate: '' };
+  mapConfigs.forEach(function(m) { empty[m.key] = {}; });
+  return empty;
+}
+function saveData() {
+  try {
+    localStorage.setItem('summerPlanData', JSON.stringify(data));
+    // Backup: also save timestamp for corruption detection
+    localStorage.setItem('summerPlanLastSave', new Date().toISOString());
+  } catch(e) {
+    showToast('⚠️ 保存失败，请检查浏览器存储空间');
+    console.error('saveData error:', e);
+  }
+}
+
+var data = getData();
+if (data.dailyDate !== todayStr) { data.daily = {}; data.dailyDate = todayStr; saveData(); }
+
+function countMap(key) {
+  if (!data[key]) return 0;
+  var c = 0;
+  for (var i = 1; i <= MAP_DAYS; i++) if (data[key]['m'+i]) c++;
+  return c;
+}
+
+// ===== Toast =====
+var toastTimer;
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 1800);
+}
+
+// ===== Tab Switching =====
+var currentTab = 'today';
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-item').forEach(function(t) { t.classList.remove('active'); });
+  var titles = { today: '今日打卡', maps: '打卡地图', more: '任务中心' };
+  document.getElementById('navTitle').textContent = titles[tab];
+  if (tab === 'today') { document.getElementById('pageToday').classList.add('active'); }
+  if (tab === 'maps') { document.getElementById('pageMaps').classList.add('active'); }
+  if (tab === 'more') { document.getElementById('pageMore').classList.add('active'); }
+  document.querySelectorAll('.tab-item')[{today:0,maps:1,more:2}[tab]].classList.add('active');
+  document.querySelector('.content').scrollTop = 0;
+}
+
+// ===== Render Hero =====
+function renderHero() {
+  var m = now.getMonth() + 1;
+  var d = now.getDate();
+  var wd = weekdays[now.getDay()];
+  // heroDate text is fully managed by updateNameDisplay()
+  document.getElementById('heroBigDate').textContent = m + '月' + d + '日';
+  document.getElementById('heroWeekday').textContent = wd;
+  document.getElementById('dayNum').textContent = getTodayStation();
+
+  var done = 0;
+  dailyTasks.forEach(function(t) { if (data.daily[t.id]) done++; });
+  var total = dailyTasks.length;
+  document.getElementById('todayDone').textContent = done;
+  document.getElementById('todayTotal').textContent = total;
+  document.getElementById('dailyTag').textContent = done + '/' + total;
+
+  var pct = total > 0 ? done / total : 0;
+  var circumference = 175.93;
+  document.getElementById('ringFill').style.strokeDashoffset = circumference * (1 - pct);
+  document.getElementById('ringText').innerHTML = done + '<small>/' + total + '</small>';
+
+  var enc = '';
+  if (done === 0) enc = '加油打卡吧！💪';
+  else if (done < total) enc = '已完成' + done + '项，继续！🔥';
+  else enc = '全部完成！太棒了！🎉';
+  document.getElementById('encourageText').textContent = enc;
+
+  document.getElementById('completeBanner').classList.toggle('show', done === total);
+
+  // Map total
+  var totalMapDone = 0;
+  mapConfigs.forEach(function(m) { totalMapDone += countMap(m.key); });
+  document.getElementById('mapTotalTag').textContent = totalMapDone + '/' + (MAP_DAYS * mapConfigs.length);
+}
+
+// ===== Render Daily Tasks =====
+function renderDaily() {
+  var container = document.getElementById('dailyTaskList');
+  container.innerHTML = '';
+  dailyTasks.forEach(function(t) {
+    var row = document.createElement('div');
+    row.className = 'task-row' + (data.daily[t.id] ? ' done' : '');
+    row.innerHTML =
+      '<div class="task-check">&#10003;</div>' +
+      '<div class="task-info">' +
+        '<div class="task-name">' + t.name + '<span class="task-badge badge-' + t.subject + '">' + t.subName + '</span></div>' +
+        '<div class="task-detail">' + t.detail + '</div>' +
+      '</div>';
+    row.onclick = function() {
+      data.daily[t.id] = !data.daily[t.id];
+      saveData();
+      renderDaily();
+      renderHero();
+      if (data.daily[t.id]) showToast('✅ ' + t.name + ' 已完成');
+    };
+    container.appendChild(row);
+  });
+}
+
+// ===== Render Map Summary =====
+function renderMapSummary() {
+  var container = document.getElementById('mapSummaryGrid');
+  container.innerHTML = '';
+  mapConfigs.forEach(function(m) {
+    var done = countMap(m.key);
+    var pct = Math.round(done / MAP_DAYS * 100);
+    var card = document.createElement('div');
+    card.className = 'map-mini-card';
+    card.style.cursor = 'pointer';
+    card.innerHTML =
+      '<div class="map-mini-icon">' + m.icon + '</div>' +
+      '<div class="map-mini-info">' +
+        '<div class="map-mini-name">' + m.name + '</div>' +
+        '<div class="map-mini-num" style="color:' + m.color + ';">' + done + '<span style="font-size:12px;color:#ccc;">/' + MAP_DAYS + '</span></div>' +
+        '<div class="map-mini-bar"><div class="map-mini-bar-fill" style="width:' + pct + '%;background:' + m.color + ';"></div></div>' +
+      '</div>';
+    card.onclick = function() {
+      currentMapIdx = mapConfigs.indexOf(m);
+      switchTab('maps');
+      renderMapSelector();
+      renderMapGrid();
+    };
+    container.appendChild(card);
+  });
+}
+
+// ===== Map Page =====
+var currentMapIdx = 0;
+
+function renderMapSelector() {
+  var container = document.getElementById('mapSelector');
+  container.innerHTML = '';
+  mapConfigs.forEach(function(m, idx) {
+    var tab = document.createElement('div');
+    tab.className = 'map-tab' + (idx === currentMapIdx ? ' active' : '');
+    if (idx === currentMapIdx) tab.style.background = m.color;
+    tab.innerHTML = '<span class="tab-icon">' + m.icon + '</span><span>' + m.name + '</span>';
+    tab.onclick = function() {
+      currentMapIdx = idx;
+      renderMapSelector();
+      renderMapGrid();
+    };
+    container.appendChild(tab);
+  });
+}
+
+function renderMapGrid() {
+  var m = mapConfigs[currentMapIdx];
+  var container = document.getElementById('mapGridContainer');
+  container.className = 'map-grid ' + m.theme;
+  container.innerHTML = '';
+
+  var todayStation = getTodayStation();
+  for (var i = 1; i <= MAP_DAYS; i++) {
+    var st = document.createElement('div');
+    st.className = 'map-station';
+    if (data[m.key] && data[m.key]['m'+i]) st.classList.add('checked');
+    if (i === todayStation) st.classList.add('today');
+    st.innerHTML = '<span class="star">⭐</span><span class="day-num">' + i + '</span>';
+    (function(idx, key, mapInfo) {
+      st.onclick = function() {
+        if (!data[key]) data[key] = {};
+        data[key]['m'+idx] = !data[key]['m'+idx];
+        saveData();
+        renderMapGrid();
+        renderMapSummary();
+        renderHero();
+        if (data[key]['m'+idx]) showToast('✅ ' + mapInfo.name + ' 第' + idx + '天打卡');
+      };
+    })(i, m.key, m);
+    container.appendChild(st);
+  }
+
+  var done = countMap(m.key);
+  var pct = Math.round(done / MAP_DAYS * 100);
+  document.getElementById('mapCurDone').textContent = done;
+  document.getElementById('mapCurName').innerHTML = m.icon + ' ' + m.name;
+  document.getElementById('mapCurFill').style.width = pct + '%';
+  document.getElementById('mapCurFill').style.background = m.color;
+}
+
+// ===== Render Weekly =====
+function renderWeekly() {
+  var container = document.getElementById('weeklyTaskList');
+  container.innerHTML = '';
+  weeklyTasks.forEach(function(t) {
+    var row = document.createElement('div');
+    row.className = 'task-row task-row-large' + (data.weekly[t.id] ? ' done' : '');
+    row.innerHTML =
+      '<div class="task-check">&#10003;</div>' +
+      '<div class="task-info">' +
+        '<div class="task-name">' + t.name + '</div>' +
+        '<div class="task-detail">' + t.detail + '</div>' +
+      '</div>';
+    row.onclick = function() {
+      data.weekly[t.id] = !data.weekly[t.id];
+      saveData();
+      renderWeekly();
+      if (data.weekly[t.id]) showToast('✅ ' + t.name);
+    };
+    container.appendChild(row);
+  });
+}
+
+// ===== Render Projects =====
+function renderProjects() {
+  var container = document.getElementById('projectTaskList');
+  container.innerHTML = '';
+  var doneCount = 0;
+  projectTasks.forEach(function(t) {
+    if (data.project[t.id]) doneCount++;
+    var row = document.createElement('div');
+    row.className = 'task-row task-row-large' + (data.project[t.id] ? ' done' : '');
+    row.innerHTML =
+      '<div class="task-check">&#10003;</div>' +
+      '<div class="task-info">' +
+        '<div class="task-name">' + t.name + '</div>' +
+        '<div class="task-detail">' + t.detail + '</div>' +
+      '</div>';
+    row.onclick = function() {
+      data.project[t.id] = !data.project[t.id];
+      saveData();
+      renderProjects();
+      if (data.project[t.id]) showToast('✅ ' + t.name);
+    };
+    container.appendChild(row);
+  });
+  document.getElementById('projTag').textContent = doneCount + '/' + projectTasks.length;
+}
+
+// ===== Export =====
+function exportData() {
+  var summary = '📊 暑假打卡数据汇总\n\n';
+  summary += '开始日期：' + getStartDateText() + '\n';
+  summary += '今日日期：' + (now.getMonth()+1) + '月' + now.getDate() + '日\n';
+  summary += '暑假第' + getTodayStation() + '天/共45天\n\n';
+  summary += '--- 打卡地图进度 ---\n';
+  mapConfigs.forEach(function(m) {
+    summary += m.icon + ' ' + m.name + '：' + countMap(m.key) + '/' + MAP_DAYS + '天\n';
+  });
+  summary += '\n--- 今日任务 ---\n';
+  var dDone = 0;
+  dailyTasks.forEach(function(t) {
+    var status = data.daily[t.id] ? '✅' : '⬜';
+    if (data.daily[t.id]) dDone++;
+    summary += status + ' ' + t.name + '\n';
+  });
+  summary += '\n今日完成：' + dDone + '/' + dailyTasks.length + '\n';
+  showToast('数据已生成，可截图保存');
+  alert(summary);
+}
+
+// ===== Manual Save =====
+function manualSave() {
+  saveData();
+  updateLastSaveTime();
+  showToast('✅ 数据已手动保存');
+}
+function updateLastSaveTime() {
+  var t = localStorage.getItem('summerPlanLastSave');
+  var hint = document.getElementById('lastSaveHint');
+  var footer = document.getElementById('footerText');
+  if (t) {
+    var d = new Date(t);
+    var ts = (d.getMonth()+1) + '/' + d.getDate() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    hint.textContent = ts;
+    footer.textContent = '🌞 上次保存：' + ts + ' · 一升二暑假打卡';
+  }
+}
+
+// ===== Reset =====
+function resetAll() {
+  if (confirm('确定要重置全部打卡记录吗？此操作不可撤销！')) {
+    data = { daily: {}, weekly: {}, project: {}, dailyDate: todayStr };
+    mapConfigs.forEach(function(m) { data[m.key] = {}; });
+    saveData();
+    localStorage.removeItem('summerPlanStartDate');
+    renderAll();
+    showToast('已重置全部记录');
+  }
+}
+
+// ===== Status Bar Time =====
+function updateStatusTime() {
+  var n = new Date();
+  var h = n.getHours();
+  var m = n.getMinutes();
+  document.getElementById('statusTime').textContent = h + ':' + (m < 10 ? '0'+m : m);
+}
+
+// ===== Render All =====
+function renderAll() {
+  updateNameDisplay();
+  renderHero();
+  renderDaily();
+  renderMapSummary();
+  renderMapSelector();
+  renderMapGrid();
+  renderWeekly();
+  renderProjects();
+  updateLastSaveTime();
+}
+
+// ===== Init =====
+updateStatusTime();
+setInterval(updateStatusTime, 30000);
+updateNameDisplay();
+updateLastSaveTime();
+renderAll();
+</script>
+
+</body>
+</html>
