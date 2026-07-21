@@ -159,6 +159,35 @@ body {
 .hero-stats { flex: 1; }
 .hero-stat-line { font-size: 13px; opacity: 0.9; margin-bottom: 4px; }
 .hero-stat-line strong { font-size: 20px; font-weight: 700; }
+.hero-save-indicator {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.15);
+  padding: 3px 8px;
+  border-radius: 10px;
+  backdrop-filter: blur(4px);
+}
+.hero-save-indicator .save-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 6px #4ade80;
+}
+.hero-save-indicator.saving .save-dot {
+  background: #fbbf24;
+  box-shadow: 0 0 6px #fbbf24;
+  animation: pulse 1s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
 
 /* ===== Daily Task List ===== */
 .task-list { }
@@ -526,6 +555,9 @@ body {
             <div class="hero-stat-line" id="encourageText">加油打卡吧！💪</div>
           </div>
         </div>
+        <div class="hero-save-indicator" id="saveIndicator">
+          <span class="save-dot"></span><span id="saveText">已自动保存</span>
+        </div>
       </div>
 
       <!-- Daily Tasks -->
@@ -774,10 +806,10 @@ var dailyTasks = [
   { id: 'd7',  name: '认字+审题练习',    detail: '划关键词，文字翻译成数字，用数学计算本', subject: 'math',     subName: '数学',  mapKey: null },
   { id: 'd4',  name: '英语闯关',        detail: '"一起作业"每天解锁一关',               subject: 'eng',      subName: '英语',  mapKey: 'engMap' },
   { id: 'd6',  name: '阅读30分钟',       detail: '绘本/拼音童话/寓言故事',              subject: 'chinese',  subName: '语文',  mapKey: 'readMap' },
-  { id: 'd8',  name: 'B站 语文预习',     detail: '看二年级语文课文预习视频',              subject: 'bilibili', subName: 'B站',  mapKey: 'cnPreviewMap' },
-  { id: 'd9',  name: 'B站 数学预习',     detail: '看二年级数学课文预习视频',              subject: 'bilibili', subName: 'B站',  mapKey: 'mathPreviewMap' },
-  { id: 'd5',  name: 'B站 英语预习',     detail: 'B站看二年级英语预习视频',              subject: 'bilibili', subName: 'B站',  mapKey: 'engPreviewMap' },
-  { id: 'd10', name: 'B站 自然拼读',     detail: '看英语自然拼读学习视频',               subject: 'bilibili', subName: 'B站',  mapKey: 'engPhonicsMap' },
+  { id: 'd8',  name: '语文预习',         detail: '二年级上册',                         subject: 'bilibili', subName: 'B站',  mapKey: 'cnPreviewMap' },
+  { id: 'd9',  name: '数学预习',         detail: '二年级上册',                         subject: 'bilibili', subName: 'B站',  mapKey: 'mathPreviewMap' },
+  { id: 'd5',  name: '英语预习',         detail: '二年级上册',                         subject: 'bilibili', subName: 'B站',  mapKey: 'engPreviewMap' },
+  { id: 'd10', name: '自然拼读',         detail: '二年级上册',                         subject: 'bilibili', subName: 'B站',  mapKey: 'engPhonicsMap' },
   { id: 'd11', name: '跳绳练习',         detail: '目标1分钟完成200个',                   subject: 'sport',    subName: '体育',  mapKey: 'ropeMap' },
 ];
 
@@ -822,9 +854,24 @@ function getData() {
 }
 function saveData() {
   try {
+    var indicator = document.getElementById('saveIndicator');
+    var saveText = document.getElementById('saveText');
+    if (indicator && saveText) {
+      indicator.classList.add('saving');
+      saveText.textContent = '保存中...';
+    }
     localStorage.setItem('summerPlanData', JSON.stringify(data));
-    // Backup: also save timestamp for corruption detection
     localStorage.setItem('summerPlanLastSave', new Date().toISOString());
+    // 延迟显示已保存，模拟异步反馈
+    setTimeout(function() {
+      if (indicator && saveText) {
+        indicator.classList.remove('saving');
+        var now = new Date();
+        var hh = String(now.getHours()).padStart(2, '0');
+        var mm = String(now.getMinutes()).padStart(2, '0');
+        saveText.textContent = '已自动保存 ' + hh + ':' + mm;
+      }
+    }, 300);
   } catch(e) {
     showToast('⚠️ 保存失败，请检查浏览器存储空间');
     console.error('saveData error:', e);
@@ -928,7 +975,15 @@ function renderDaily() {
       renderHero();
       renderMapSummary();
       if (currentTab === 'maps') renderMapGrid();
-      if (data.daily[t.id]) showToast('✅ ' + t.name + ' 已完成');
+      if (data.daily[t.id]) {
+        // 显示同步提示，让用户知道打卡地图也被更新了
+        var tip = '✅ ' + t.name + ' 已完成';
+        if (t.mapKey) {
+          var m = mapConfigs.filter(function(x) { return x.key === t.mapKey; })[0];
+          if (m) tip += ' · 已同步到「' + m.name + '」地图';
+        }
+        showToast(tip);
+      }
     };
     container.appendChild(row);
   });
@@ -1097,11 +1152,13 @@ function updateLastSaveTime() {
   var t = localStorage.getItem('summerPlanLastSave');
   var hint = document.getElementById('lastSaveHint');
   var footer = document.getElementById('footerText');
+  var saveText = document.getElementById('saveText');
   if (t) {
     var d = new Date(t);
     var ts = (d.getMonth()+1) + '/' + d.getDate() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
     hint.textContent = ts;
     footer.textContent = '🌞 上次保存：' + ts + ' · 一升二暑假打卡';
+    if (saveText) saveText.textContent = '已自动保存 ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
 }
 
