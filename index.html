@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>暑假打卡</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 /* ===== Reset & Base ===== */
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -184,9 +185,9 @@ body {
   box-shadow: 0 0 6px #fbbf24;
   animation: pulse 1s infinite;
 }
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+.hero-save-indicator.cloud .save-dot {
+  background: #60a5fa;
+  box-shadow: 0 0 6px #60a5fa;
 }
 
 /* ===== Daily Task List ===== */
@@ -513,9 +514,105 @@ body {
 .complete-banner .cb-icon { font-size: 48px; margin-bottom: 8px; }
 .complete-banner .cb-text { font-size: 16px; color: #07c160; font-weight: 600; }
 .complete-banner .cb-sub { font-size: 13px; color: #999; margin-top: 4px; }
+
+/* ===== Login Page ===== */
+.login-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 20px;
+}
+.login-overlay.hidden { display: none; }
+.login-card {
+  background: white;
+  border-radius: 20px;
+  padding: 32px 24px 24px;
+  width: 100%;
+  max-width: 320px;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.2);
+  text-align: center;
+}
+.login-card .login-logo { font-size: 48px; margin-bottom: 8px; }
+.login-card .login-title { font-size: 20px; font-weight: 700; color: #333; margin-bottom: 4px; }
+.login-card .login-sub { font-size: 13px; color: #999; margin-bottom: 20px; }
+.login-card .login-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid #e8e8e8;
+  border-radius: 12px;
+  font-size: 15px;
+  margin-bottom: 12px;
+  outline: none;
+  font-family: inherit;
+  color: #333;
+  transition: border-color 0.2s;
+  background: #fafafa;
+}
+.login-card .login-input:focus { border-color: #07c160; background: white; }
+.login-card .login-btn {
+  width: 100%;
+  padding: 13px;
+  background: #07c160;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 4px;
+  transition: background 0.2s;
+}
+.login-card .login-btn:active { background: #06ad56; }
+.login-card .login-btn:disabled { background: #a0d8b8; cursor: not-allowed; }
+.login-card .login-switch {
+  margin-top: 16px;
+  font-size: 13px;
+  color: #999;
+}
+.login-card .login-switch a { color: #07c160; cursor: pointer; text-decoration: none; font-weight: 500; }
+.login-card .login-error {
+  color: #fa5151;
+  font-size: 12px;
+  margin-top: 8px;
+  min-height: 18px;
+}
+.login-card .login-loading {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
+
+<!-- ===== Login Overlay ===== -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+    <div class="login-logo">📋</div>
+    <div class="login-title" id="loginTitle">登录账号</div>
+    <div class="login-sub">登录后打卡数据自动云端同步</div>
+    <input class="login-input" id="loginEmail" type="email" placeholder="邮箱地址" autocomplete="email" />
+    <input class="login-input" id="loginPassword" type="password" placeholder="密码（至少6位）" autocomplete="current-password" />
+    <div class="login-error" id="loginError"></div>
+    <button class="login-btn" id="loginBtn" onclick="handleLogin()">登 录</button>
+    <div class="login-switch">
+      <span id="switchText">还没有账号？</span>
+      <a id="switchLink" onclick="toggleAuthMode()">注册新账号</a>
+    </div>
+  </div>
+</div>
 
 <div class="phone-frame">
 
@@ -649,6 +746,12 @@ body {
           <span class="s-hint" id="settingsNameHint">未设置</span>
           <span class="s-arrow">›</span>
         </div>
+        <div class="settings-row" onclick="showToast('账号：' + (currentUserEmail || '未登录'))">
+          <span class="s-icon">👤</span>
+          <span>登录账号</span>
+          <span class="s-hint" id="settingsEmailHint" style="font-size:11px;">-</span>
+          <span class="s-arrow">›</span>
+        </div>
         <div class="settings-row" onclick="showToast('开始日期：' + getStartDateText())">
           <span class="s-icon">📅</span>
           <span>查看开始日期</span>
@@ -665,6 +768,17 @@ body {
           <span class="s-hint" id="lastSaveHint" style="font-size:12px;">-</span>
           <span class="s-arrow">›</span>
         </div>
+        <div class="settings-row" onclick="syncNow()">
+          <span class="s-icon">☁️</span>
+          <span>强制云端同步</span>
+          <span class="s-hint" id="syncHint" style="font-size:12px;">-</span>
+          <span class="s-arrow">›</span>
+        </div>
+        <div class="settings-row" onclick="logout()">
+          <span class="s-icon">🚪</span>
+          <span>退出登录</span>
+          <span class="s-arrow">›</span>
+        </div>
         <div class="settings-row danger" onclick="resetAll()">
           <span class="s-icon">🗑️</span>
           <span>重置全部记录</span>
@@ -673,7 +787,7 @@ body {
       </div>
 
       <div style="text-align:center;padding:16px;font-size:12px;color:#ccc;" id="footerText">
-        🌞 一升二暑假打卡 · 数据自动保存
+        🌞 一升二暑假打卡 · 云端自动同步
       </div>
     </div>
 
@@ -713,6 +827,15 @@ body {
 </div>
 
 <script>
+// ===== Supabase Config =====
+var SUPABASE_URL = 'https://ewgmyhmaoszgjcoyiycu.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_ULEqZLzuKD4Le7a3J-ULFA_4o8T5GmC';
+var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var currentUser = null;
+var currentUserEmail = '';
+var authMode = 'login'; // 'login' | 'signup'
+var cloudSyncing = false;
+
 // ===== Date Utils =====
 var now = new Date();
 var todayStr = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate());
@@ -720,6 +843,230 @@ var MAP_DAYS = 45;
 var weekdays = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
 
 function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+// ===== Auth Functions =====
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  document.getElementById('loginTitle').textContent = authMode === 'login' ? '登录账号' : '注册账号';
+  document.getElementById('loginBtn').textContent = authMode === 'login' ? '登 录' : '注 册';
+  document.getElementById('switchText').textContent = authMode === 'login' ? '还没有账号？' : '已有账号？';
+  document.getElementById('switchLink').textContent = authMode === 'login' ? '注册新账号' : '去登录';
+  document.getElementById('loginError').textContent = '';
+}
+
+async function handleLogin() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var password = document.getElementById('loginPassword').value;
+  var errorEl = document.getElementById('loginError');
+  var btn = document.getElementById('loginBtn');
+
+  if (!email) { errorEl.textContent = '请输入邮箱地址'; return; }
+  if (!password || password.length < 6) { errorEl.textContent = '密码至少6位'; return; }
+
+  errorEl.textContent = '';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="login-loading"></span>' + (authMode === 'login' ? '登录中...' : '注册中...');
+
+  try {
+    var result;
+    if (authMode === 'signup') {
+      result = await supabase.auth.signUp({ email: email, password: password });
+      if (result.error) throw result.error;
+      if (result.data.user) {
+        // Auto-confirm for simplicity (Supabase may require email confirm depending on settings)
+        errorEl.textContent = '';
+        // If identities length is 0, user needs email confirmation
+        if (!result.data.session) {
+          errorEl.textContent = '注册成功！请检查邮箱确认链接，或关闭邮箱验证后重试。';
+          btn.disabled = false;
+          btn.textContent = '注 册';
+          return;
+        }
+      }
+    } else {
+      result = await supabase.auth.signInWithPassword({ email: email, password: password });
+      if (result.error) throw result.error;
+    }
+
+    if (result.data.session) {
+      currentUser = result.data.user;
+      currentUserEmail = result.data.user.email;
+      await onLoginSuccess();
+    }
+  } catch(e) {
+    var msg = e.message || '操作失败';
+    if (msg.includes('Invalid login')) msg = '邮箱或密码错误';
+    if (msg.includes('already registered')) msg = '该邮箱已注册，请直接登录';
+    if (msg.includes('Email not confirmed')) msg = '请先到邮箱点击确认链接';
+    errorEl.textContent = msg;
+    btn.disabled = false;
+    btn.innerHTML = authMode === 'login' ? '登 录' : '注 册';
+  }
+}
+
+async function onLoginSuccess() {
+  document.getElementById('loginOverlay').classList.add('hidden');
+  document.getElementById('settingsEmailHint').textContent = currentUserEmail;
+  // Load cloud data
+  await syncFromCloud();
+  refreshDataFromStorage();
+  renderAll();
+  showToast('✅ 登录成功，数据已云端同步');
+}
+
+async function logout() {
+  if (!confirm('确定要退出登录吗？未同步的本地数据将保留在本设备上。')) return;
+  await supabase.auth.signOut();
+  currentUser = null;
+  currentUserEmail = '';
+  document.getElementById('loginOverlay').classList.remove('hidden');
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('loginBtn').disabled = false;
+  document.getElementById('loginBtn').textContent = '登 录';
+  document.getElementById('settingsEmailHint').textContent = '-';
+  showToast('已退出登录');
+}
+
+async function checkSession() {
+  try {
+    var result = await supabase.auth.getSession();
+    if (result.data.session) {
+      currentUser = result.data.user;
+      currentUserEmail = result.data.user.email;
+      document.getElementById('loginOverlay').classList.add('hidden');
+      document.getElementById('settingsEmailHint').textContent = currentUserEmail;
+      await syncFromCloud();
+      refreshDataFromStorage();
+      return true;
+    }
+  } catch(e) {
+    console.log('Session check failed:', e.message);
+  }
+  // No session, show login but don't block — allow offline use
+  document.getElementById('loginOverlay').classList.remove('hidden');
+  refreshDataFromStorage();
+  return false;
+}
+
+// ===== Cloud Sync =====
+async function syncFromCloud() {
+  if (!currentUser) return;
+  cloudSyncing = true;
+  updateSyncHint('同步中...');
+  try {
+    var result = await supabase
+      .from('checkin_data')
+      .select('data, updated_at')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    if (result.data && result.data.data) {
+      var cloudData = result.data.data;
+      var cloudTime = new Date(result.data.updated_at).getTime();
+      var localTime = parseInt(localStorage.getItem('summerPlanCloudTime') || '0');
+
+      // Merge: cloud wins if newer; if cloud is older, push local to cloud
+      if (cloudTime >= localTime || !localTime) {
+        // Cloud is newer or same — use cloud data
+        localStorage.setItem('summerPlanData', JSON.stringify(cloudData));
+        localStorage.setItem('summerPlanCloudTime', String(cloudTime));
+        if (cloudData.childName) {
+          localStorage.setItem('summerChildName', cloudData.childName);
+        }
+        updateSyncHint('已同步 ' + formatTime(new Date(cloudTime)));
+      } else {
+        // Local is newer — push local to cloud
+        await pushToCloud();
+        updateSyncHint('已上传 ' + formatTime(new Date()));
+      }
+    } else {
+      // No cloud data yet — push local
+      await pushToCloud();
+      updateSyncHint('已上传 ' + formatTime(new Date()));
+    }
+  } catch(e) {
+    console.error('Sync from cloud error:', e);
+    updateSyncHint('同步失败');
+  }
+  cloudSyncing = false;
+}
+
+async function pushToCloud() {
+  if (!currentUser) return;
+  try {
+    var cloudData = buildCloudPayload();
+    var existingResult = await supabase
+      .from('checkin_data')
+      .select('id')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    var now = new Date();
+    var nowISO = now.toISOString();
+    localStorage.setItem('summerPlanCloudTime', String(now.getTime()));
+
+    if (existingResult.data) {
+      await supabase
+        .from('checkin_data')
+        .update({ data: cloudData, updated_at: nowISO })
+        .eq('user_id', currentUser.id);
+    } else {
+      await supabase
+        .from('checkin_data')
+        .insert({ user_id: currentUser.id, data: cloudData, updated_at: nowISO });
+    }
+    updateSyncHint(formatTime(now));
+    updateSaveIndicator('cloud');
+  } catch(e) {
+    console.error('Push to cloud error:', e);
+    updateSyncHint('上传失败');
+  }
+}
+
+function buildCloudPayload() {
+  var raw = localStorage.getItem('summerPlanData');
+  var payload = raw ? JSON.parse(raw) : data;
+  // Include child name
+  payload.childName = localStorage.getItem('summerChildName') || '';
+  return payload;
+}
+
+function updateSyncHint(text) {
+  var el = document.getElementById('syncHint');
+  if (el) el.textContent = text;
+}
+function updateSaveIndicator(state) {
+  var indicator = document.getElementById('saveIndicator');
+  var saveText = document.getElementById('saveText');
+  if (!indicator || !saveText) return;
+  indicator.classList.remove('saving', 'cloud');
+  if (state === 'cloud') {
+    indicator.classList.add('cloud');
+    saveText.textContent = '已云端保存';
+  } else {
+    saveText.textContent = '已自动保存';
+  }
+}
+function syncNow() {
+  if (!currentUser) { showToast('⚠️ 请先登录'); return; }
+  pushToCloud().then(function() {
+    showToast('✅ 数据已同步到云端');
+  });
+}
+
+// ===== Keyboard support for login =====
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !document.getElementById('loginOverlay').classList.contains('hidden')) {
+    handleLogin();
+  }
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && document.getElementById('nameModal').classList.contains('show')) {
+    saveChildName();
+  }
+});
 
 // ===== Child Name =====
 function getChildName() {
@@ -757,6 +1104,7 @@ function saveChildName() {
   if (name) {
     setChildName(name);
     updateNameDisplay();
+    saveData();
     showToast('已保存：' + name);
   } else {
     showToast('请输入名字');
@@ -830,15 +1178,13 @@ var projectTasks = [
   { id: 'p6', name: '乘法口诀表通关', detail: '暑假结束前能完整背诵九九乘法表' },
 ];
 
-// ===== Storage (with fallback for file:// instability) =====
+// ===== Storage (localStorage + cloud) =====
 function getData() {
   try {
     var raw = localStorage.getItem('summerPlanData');
     if (raw) {
       var d = JSON.parse(raw);
-      // Migration: old 'map' key → 'readMap'
       if (d.map && !d.readMap) { d.readMap = d.map; delete d.map; }
-      // Ensure all 8 map keys exist
       mapConfigs.forEach(function(m) { if (!d[m.key]) d[m.key] = {}; });
       if (!d.weekly) d.weekly = {};
       if (!d.project) d.project = {};
@@ -852,26 +1198,41 @@ function getData() {
   mapConfigs.forEach(function(m) { empty[m.key] = {}; });
   return empty;
 }
+
+function refreshDataFromStorage() {
+  data = getData();
+  if (data.dailyDate !== todayStr) { data.daily = {}; data.dailyDate = todayStr; saveData(); }
+}
+
 function saveData() {
   try {
+    // Local save
     var indicator = document.getElementById('saveIndicator');
     var saveText = document.getElementById('saveText');
     if (indicator && saveText) {
       indicator.classList.add('saving');
+      indicator.classList.remove('cloud');
       saveText.textContent = '保存中...';
     }
     localStorage.setItem('summerPlanData', JSON.stringify(data));
     localStorage.setItem('summerPlanLastSave', new Date().toISOString());
-    // 延迟显示已保存，模拟异步反馈
+
     setTimeout(function() {
       if (indicator && saveText) {
         indicator.classList.remove('saving');
-        var now = new Date();
-        var hh = String(now.getHours()).padStart(2, '0');
-        var mm = String(now.getMinutes()).padStart(2, '0');
+        var n = new Date();
+        var hh = String(n.getHours()).padStart(2, '0');
+        var mm = String(n.getMinutes()).padStart(2, '0');
         saveText.textContent = '已自动保存 ' + hh + ':' + mm;
       }
     }, 300);
+
+    // Cloud push (async, non-blocking)
+    if (currentUser) {
+      pushToCloud().catch(function(e) {
+        console.error('Background cloud push failed:', e);
+      });
+    }
   } catch(e) {
     showToast('⚠️ 保存失败，请检查浏览器存储空间');
     console.error('saveData error:', e);
@@ -879,7 +1240,6 @@ function saveData() {
 }
 
 var data = getData();
-if (data.dailyDate !== todayStr) { data.daily = {}; data.dailyDate = todayStr; saveData(); }
 
 function countMap(key) {
   if (!data[key]) return 0;
@@ -895,7 +1255,7 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 1800);
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 2000);
 }
 
 // ===== Tab Switching =====
@@ -918,7 +1278,6 @@ function renderHero() {
   var m = now.getMonth() + 1;
   var d = now.getDate();
   var wd = weekdays[now.getDay()];
-  // heroDate text is fully managed by updateNameDisplay()
   document.getElementById('heroBigDate').textContent = m + '月' + d + '日';
   document.getElementById('heroWeekday').textContent = wd;
   document.getElementById('dayNum').textContent = getTodayStation();
@@ -943,7 +1302,6 @@ function renderHero() {
 
   document.getElementById('completeBanner').classList.toggle('show', done === total);
 
-  // Map total
   var totalMapDone = 0;
   mapConfigs.forEach(function(m) { totalMapDone += countMap(m.key); });
   document.getElementById('mapTotalTag').textContent = totalMapDone + '/' + (MAP_DAYS * mapConfigs.length);
@@ -964,7 +1322,6 @@ function renderDaily() {
       '</div>';
     row.onclick = function() {
       data.daily[t.id] = !data.daily[t.id];
-      // 同步打卡地图：完成今日任务时，自动在对应地图当天打卡
       if (t.mapKey) {
         if (!data[t.mapKey]) data[t.mapKey] = {};
         var todayStation = getTodayStation();
@@ -976,7 +1333,6 @@ function renderDaily() {
       renderMapSummary();
       if (currentTab === 'maps') renderMapGrid();
       if (data.daily[t.id]) {
-        // 显示同步提示，让用户知道打卡地图也被更新了
         var tip = '✅ ' + t.name + ' 已完成';
         if (t.mapKey) {
           var m = mapConfigs.filter(function(x) { return x.key === t.mapKey; })[0];
@@ -1152,23 +1508,24 @@ function updateLastSaveTime() {
   var t = localStorage.getItem('summerPlanLastSave');
   var hint = document.getElementById('lastSaveHint');
   var footer = document.getElementById('footerText');
-  var saveText = document.getElementById('saveText');
   if (t) {
     var d = new Date(t);
     var ts = (d.getMonth()+1) + '/' + d.getDate() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
     hint.textContent = ts;
-    footer.textContent = '🌞 上次保存：' + ts + ' · 一升二暑假打卡';
-    if (saveText) saveText.textContent = '已自动保存 ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    footer.textContent = '🌞 上次保存：' + ts + ' · 一升二暑假打卡 · 云端同步';
   }
+}
+
+function formatTime(d) {
+  return (d.getMonth()+1) + '/' + d.getDate() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
 }
 
 // ===== Reset =====
 function resetAll() {
-  if (confirm('确定要重置全部打卡记录吗？此操作不可撤销！')) {
+  if (confirm('确定要重置全部打卡记录吗？此操作不可撤销！云端数据也会被清空。')) {
     data = { daily: {}, weekly: {}, project: {}, dailyDate: todayStr };
     mapConfigs.forEach(function(m) { data[m.key] = {}; });
     saveData();
-    localStorage.removeItem('summerPlanStartDate');
     renderAll();
     showToast('已重置全部记录');
   }
@@ -1200,7 +1557,19 @@ updateStatusTime();
 setInterval(updateStatusTime, 30000);
 updateNameDisplay();
 updateLastSaveTime();
-renderAll();
+
+// Check existing session (auto-login), then render
+checkSession().then(function(loggedIn) {
+  if (!loggedIn) {
+    // Not logged in — show offline data anyway
+    refreshDataFromStorage();
+    renderAll();
+    showToast('⚠️ 未登录，数据仅保存在本设备');
+  }
+}).catch(function() {
+  refreshDataFromStorage();
+  renderAll();
+});
 </script>
 
 </body>
