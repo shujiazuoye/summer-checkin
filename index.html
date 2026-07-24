@@ -277,8 +277,21 @@ body {
   overflow-x: auto;
   padding: 4px 0 12px;
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  cursor: grab;
 }
-.map-selector::-webkit-scrollbar { display: none; }
+.map-selector:active { cursor: grabbing; }
+/* 桌面端显示细滚动条以便拖动 */
+@media (hover: hover) {
+  .map-selector::-webkit-scrollbar { height: 6px; }
+  .map-selector::-webkit-scrollbar-track { background: transparent; }
+  .map-selector::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+}
+/* 移动端隐藏滚动条 */
+@media (hover: none) {
+  .map-selector::-webkit-scrollbar { display: none; }
+  .map-selector { scrollbar-width: none; }
+}
 .map-tab {
   flex-shrink: 0;
   padding: 8px 14px;
@@ -1551,6 +1564,28 @@ function renderAll() {
   renderProjects();
   updateLastSaveTime();
 }
+
+// ===== Mouse drag scroll for desktop =====
+(function initDragScroll() {
+  var el = document.getElementById('mapSelector');
+  if (!el) return;
+  var isDown = false, startX, scrollLeft;
+  el.addEventListener('mousedown', function(e) {
+    isDown = true;
+    el.classList.add('active');
+    startX = e.pageX - el.offsetLeft;
+    scrollLeft = el.scrollLeft;
+  });
+  el.addEventListener('mouseleave', function() { isDown = false; });
+  el.addEventListener('mouseup', function() { isDown = false; });
+  el.addEventListener('mousemove', function(e) {
+    if (!isDown) return;
+    e.preventDefault();
+    var x = e.pageX - el.offsetLeft;
+    var walk = (x - startX) * 1.5;
+    el.scrollLeft = scrollLeft - walk;
+  });
+})();
 
 // ===== Init =====
 updateStatusTime();
