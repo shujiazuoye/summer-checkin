@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>暑假打卡</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #ededed; display: flex; justify-content: center; align-items: center;
+}
+
+/* Phone Frame */
+.phone-frame {
+  width: 100%; max-width: 390px; height: 100vh; max-height: 844px;
+  background: #f7f7f7; position: relative; display: flex; flex-direction: column;
+  overflow: hidden; box-shadow: 0 0 40px rgba(0,0,0,0.12);
+}
+@media (min-width: 500px) {
+  body { background: #1a1a1a; }
+  .phone-frame { border-radius: 40px; border: 8px solid #2a2a2a; height: 844px; }
+}
+
+/* Status Bar */
+.status-bar {
+  height: 44px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; background: #07c160; color: white; font-size: 14px; font-weight: 600; flex-shrink: 0;
+}
+.status-bar .time { font-size: 15px; }
+.status-bar .icons { display: flex; gap: 6px; align-items: center; font-size: 12px; }
+
+/* Nav Bar */
+.nav-bar {
+  height: 44px; display: flex; align-items: center; justify-content: center;
+  background: #07c160; color: white; font-size: 17px; font-weight: 600; flex-shrink: 0;
+}
+
+/* Content */
+.content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 70px; }
+.content::-webkit-scrollbar { display: none; }
+.page { display: none; padding: 8px; }
+.page.active { display: block; }
+
+/* Hero Card */
+.hero-card {
+  background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
+  border-radius: 16px; padding: 20px 18px; color: white; margin-bottom: 12px; position: relative; overflow: hidden;
+}
+.hero-card::after {
+  content: ''; position: absolute; right: -30px; top: -30px;
+  width: 120px; height: 120px; background: rgba(255,255,255,0.08); border-radius: 50%;
+}
+.hero-card::before {
+  content: ''; position: absolute; right: 20px; bottom: -40px;
+  width: 80px; height: 80px; background: rgba(255,255,255,0.06); border-radius: 50%;
+}
+.hero-date { font-size: 14px; opacity: 0.9; margin-bottom: 4px; cursor: pointer; }
+.hero-big-date { font-size: 28px; font-weight: 700; margin-bottom: 2px; }
+.hero-weekday { font-size: 14px; opacity: 0.85; margin-bottom: 14px; }
+.hero-progress-row { display: flex; align-items: center; gap: 14px; }
+.hero-ring { width: 64px; height: 64px; position: relative; flex-shrink: 0; }
+.hero-ring svg { transform: rotate(-90deg); }
+.hero-ring .ring-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-size: 16px; font-weight: 700; }
+.hero-ring .ring-text small { font-size: 10px; opacity: 0.7; }
+.hero-stats { flex: 1; }
+.hero-stat-line { font-size: 13px; opacity: 0.9; margin-bottom: 4px; }
+.hero-stat-line strong { font-size: 20px; font-weight: 700; }
+.hero-save-indicator {
+  position: absolute; top: 12px; right: 14px; display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.15);
+  padding: 3px 8px; border-radius: 10px;
+}
+.hero-save-indicator .save-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+.hero-save-indicator.cloud .save-dot { background: #60a5fa; box-shadow: 0 0 6px #60a5fa; }
+
+/* Cards */
+.card { background: white; border-radius: 12px; margin-bottom: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.card-header { padding: 14px 16px 10px; display: flex; align-items: center; gap: 8px; }
+.card-header .card-icon { font-size: 20px; }
+.card-header .card-title { font-size: 16px; font-weight: 600; color: #333; }
+.card-header .card-tag { margin-left: auto; font-size: 11px; color: #999; background: #f5f5f5; padding: 2px 8px; border-radius: 8px; }
+.card-body { padding: 0 10px 14px; }
+
+/* Task List */
+.task-row {
+  display: flex; align-items: flex-start; gap: 12px; padding: 13px 0;
+  border-bottom: 0.5px solid #f0f0f0; cursor: pointer; transition: background 0.15s;
+}
+.task-row:last-child { border-bottom: none; }
+.task-row:active { background: #f9f9f9; }
+.task-check {
+  width: 24px; height: 24px; border: 2px solid #ddd; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+  font-size: 14px; color: transparent; transition: all 0.2s;
+}
+.task-row.done .task-check { background: #07c160; border-color: #07c160; color: white; }
+.task-info { flex: 1; min-width: 0; }
+.task-name { font-size: 15px; font-weight: 500; color: #333; line-height: 1.4; }
+.task-row.done .task-name { color: #999; text-decoration: line-through; }
+.task-detail { font-size: 12px; color: #999; margin-top: 3px; line-height: 1.4; }
+.task-badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; margin-left: 6px; font-weight: 500; }
+.badge-math { background: #ffe0e6; color: #ff6a88; }
+.badge-chinese { background: #e0f0ff; color: #5b8def; }
+.badge-eng { background: #e0ffe6; color: #2ecc71; }
+.badge-bilibili { background: #ffe0fa; color: #e91e90; }
+.badge-sport { background: #ffe8d6; color: #e67e22; }
+
+/* Map Summary */
+.map-summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.map-mini-card { background: #f9f9f9; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
+.map-mini-icon { font-size: 20px; flex-shrink: 0; }
+.map-mini-info { flex: 1; min-width: 0; }
+.map-mini-name { font-size: 12px; color: #666; }
+.map-mini-num { font-size: 16px; font-weight: 700; }
+.map-mini-bar { height: 4px; background: #eee; border-radius: 2px; margin-top: 4px; overflow: hidden; }
+.map-mini-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+/* Map Grid */
+.map-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 4px 0; }
+.map-station {
+  aspect-ratio: 1; border-radius: 50%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;
+  border: 2px solid #e8e8e8; background: #fafafa; user-select: none; min-width: 0;
+}
+.map-station:active { transform: scale(0.92); }
+.map-station .day-num { font-size: 10px; font-weight: 600; color: #aaa; }
+.map-station .star { font-size: 12px; opacity: 0; transition: opacity 0.2s; }
+.map-station.checked .star { opacity: 1; }
+.map-station.checked .day-num { color: white; }
+.map-station.checked { background: #07c160; border-color: #06ad56; }
+.map-station.today { border-width: 3px; border-color: #07c160; animation: pulse 2s infinite; }
+@keyframes pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(7,193,96,0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(7,193,96,0); }
+}
+
+/* Tab Bar */
+.tab-bar { height: 60px; display: flex; background: white; border-top: 0.5px solid #e0e0e0; flex-shrink: 0; }
+.tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; transition: all 0.2s; }
+.tab-item .tab-icon-large { font-size: 22px; transition: transform 0.2s; }
+.tab-item .tab-label { font-size: 10px; color: #999; }
+.tab-item.active .tab-label { color: #07c160; font-weight: 600; }
+.tab-item.active .tab-icon-large { transform: scale(1.1); }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.75); color: white; padding: 10px 20px; border-radius: 20px;
+  font-size: 14px; z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+
+/* Login */
+.login-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
+  z-index: 10000; display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 20px;
+}
+.login-overlay.hidden { display: none; }
+.login-card { background: white; border-radius: 20px; padding: 32px 24px 24px; width: 100%; max-width: 320px; box-shadow: 0 12px 48px rgba(0,0,0,0.2); text-align: center; }
+.login-card .login-logo { font-size: 48px; margin-bottom: 8px; }
+.login-card .login-title { font-size: 20px; font-weight: 700; color: #333; margin-bottom: 4px; }
+.login-card .login-sub { font-size: 13px; color: #999; margin-bottom: 20px; }
+.login-card .login-input { width: 100%; padding: 12px 14px; border: 2px solid #e8e8e8; border-radius: 12px; font-size: 15px; margin-bottom: 12px; outline: none; font-family: inherit; color: #333; background: #fafafa; }
+.login-card .login-input:focus { border-color: #07c160; background: white; }
+.login-card .login-btn { width: 100%; padding: 13px; background: #07c160; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; font-family: inherit; margin-top: 4px; }
+.login-card .login-btn:active { background: #06ad56; }
+.login-card .login-btn:disabled { background: #a0d8b8; }
+.login-card .remember-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: #999; }
+.login-card .remember-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.login-card .remember-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: #07c160; cursor: pointer; }
+.login-card .saved-hint { font-size: 11px; color: #07c160; display: none; }
+.login-card .saved-hint.show { display: inline; }
+.login-card .guest-btn { display: block; margin-top: 14px; padding: 10px; text-align: center; font-size: 14px; color: #07c160; cursor: pointer; border: 1px dashed #07c160; border-radius: 10px; background: rgba(7,193,96,0.05); }
+.login-card .guest-btn:active { background: rgba(7,193,96,0.1); }
+.login-card .login-error { color: #fa5151; font-size: 12px; margin-top: 8px; min-height: 18px; }
+.login-card .login-loading { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Settings */
+.settings-row { display: flex; align-items: center; padding: 14px 16px; cursor: pointer; border-bottom: 0.5px solid #f0f0f0; font-size: 15px; color: #333; }
+.settings-row:last-child { border-bottom: none; }
+.settings-row:active { background: #f9f9f9; }
+.settings-row .s-icon { font-size: 18px; margin-right: 10px; }
+.settings-row .s-arrow { margin-left: auto; color: #ccc; font-size: 14px; }
+.settings-row .s-hint { margin-left: auto; color: #999; font-size: 14px; }
+.settings-row.danger { color: #fa5151; }
+
+/* Modal */
+.modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none; align-items: center; justify-content: center; }
+.modal-backdrop.show { display: flex; }
+.modal-box { background: white; border-radius: 16px; padding: 24px 20px 20px; width: 280px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
+.modal-box .modal-title { font-size: 17px; font-weight: 600; color: #333; margin-bottom: 16px; }
+.modal-box .modal-input { width: 100%; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; text-align: center; outline: none; font-family: inherit; color: #333; transition: border-color 0.2s; }
+.modal-box .modal-input:focus { border-color: #07c160; }
+.modal-box .modal-buttons { display: flex; gap: 10px; margin-top: 16px; }
+.modal-box .modal-btn { flex: 1; padding: 10px 0; border-radius: 10px; border: none; font-size: 15px; font-weight: 500; cursor: pointer; font-family: inherit; }
+.modal-btn.cancel { background: #f5f5f5; color: #666; }
+.modal-btn.confirm { background: #07c160; color: white; }
+</style>
+</head>
+<body>
+
+<!-- ===== Login Overlay ===== -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+    <div class="login-logo">📋</div>
+    <div class="login-title" id="loginTitle">登录账号</div>
+    <div class="login-sub">登录后数据云端同步，换设备不丢</div>
+    <input class="login-input" id="loginEmail" type="email" placeholder="邮箱地址" autocomplete="email">
+    <input class="login-input" id="loginPassword" type="password" placeholder="密码（至少6位）" autocomplete="current-password">
+    <div class="login-error" id="loginError"></div>
+    <div class="remember-row">
+      <label>
+        <input type="checkbox" id="rememberMe" checked> 记住密码
+      </label>
+      <span class="saved-hint" id="savedHint">✓ 已保存</span>
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="handleLogin()">登 录</button>
+    <div style="margin-top:12px;font-size:13px;color:#999;">
+      <span id="switchText">还没有账号？</span>
+      <a id="switchLink" onclick="toggleAuthMode()" style="color:#07c160;cursor:pointer;font-weight:500;">注册新账号</a>
+    </div>
+    <div class="guest-btn" onclick="enterAsGuest()">无需登录，直接打卡 ›</div>
+  </div>
+</div>
+
+<div class="phone-frame">
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <span class="time" id="statusTime">9:00</span>
+    <span class="icons">📶 📡 🔋</span>
+  </div>
+
+  <!-- Nav Bar -->
+  <div class="nav-bar"><span id="navTitle">今日打卡</span></div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- ===== Page 1: Today ===== -->
+    <div class="page active" id="pageToday">
+      <div class="hero-card">
+        <div class="hero-date" id="heroDate" onclick="showNameModal()">2026年暑假</div>
+        <div class="hero-big-date" id="heroBigDate">7月27日</div>
+        <div class="hero-weekday" id="heroWeekday">星期一</div>
+        <div class="hero-progress-row">
+          <div class="hero-ring">
+            <svg width="64" height="64">
+              <circle cx="32" cy="32" r="28" stroke="rgba(255,255,255,0.2)" stroke-width="5" fill="none"></circle>
+              <circle id="ringFill" cx="32" cy="32" r="28" stroke="white" stroke-width="5" fill="none" stroke-dasharray="175.93" stroke-dashoffset="175.93" stroke-linecap="round" style="transition: stroke-dashoffset 0.5s;"></circle>
+            </svg>
+            <div class="ring-text" id="ringText">0<small>/11</small></div>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat-line">暑假第 <strong id="dayNum">1</strong> 天 / 共45天</div>
+            <div class="hero-stat-line">今日完成 <strong id="todayDone">0</strong> / <span id="todayTotal">11</span> 项</div>
+            <div class="hero-stat-line" id="encourageText">加油打卡吧！💪</div>
+          </div>
+        </div>
+        <div class="hero-save-indicator" id="saveIndicator">
+          <span class="save-dot"></span><span id="saveText">已自动保存</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">📋</span>
+          <span class="card-title">今日任务</span>
+          <span class="card-tag" id="dailyTag">0/11</span>
+        </div>
+        <div class="card-body"><div id="dailyTaskList"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">🗺️</span>
+          <span class="card-title">打卡进度</span>
+          <span class="card-tag" id="mapTotalTag">0/405</span>
+        </div>
+        <div class="card-body"><div class="map-summary-grid" id="mapSummaryGrid"></div></div>
+      </div>
+    </div>
+
+    <!-- ===== Page 2: Maps ===== -->
+    <div class="page" id="pageMaps">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">🗺️</span>
+          <span class="card-title">打卡地图</span>
+          <span class="card-tag">45天挑战</span>
+        </div>
+        <div class="card-body">
+          <div class="map-selector" id="mapSelector" style="display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;-webkit-overflow-scrolling:touch;"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 4px;font-size:13px;">
+            <span style="color:#666;"><strong id="mapCurDone" style="color:#07c160;font-size:16px;">0</strong> / 45 天</span>
+            <span id="mapCurName" style="font-weight:600;color:#333;">📖 阅读</span>
+          </div>
+          <div style="height:6px;background:#f0f0f0;border-radius:3px;margin:0 4px 12px;overflow:hidden;">
+            <div id="mapCurFill" style="height:100%;width:0%;background:#4ecdc4;border-radius:3px;transition:width 0.3s;"></div>
+          </div>
+          <div class="map-grid" id="mapGridContainer"></div>
+          <div style="font-size:11px;color:#bbb;text-align:center;margin-top:12px;">点击圆圈打卡 · 高亮圆圈是今天</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Page 3: More ===== -->
+    <div class="page" id="pageMore">
+      <div style="font-size:13px;color:#999;padding:8px 4px;font-weight:500;">🔬 生活实践任务</div>
+      <div class="card">
+        <div class="card-body"><div id="weeklyTaskList"></div></div>
+      </div>
+
+      <div style="font-size:13px;color:#999;padding:8px 4px;font-weight:500;">🎯 暑假项目待办</div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">🎯</span>
+          <span class="card-title">项目进度</span>
+          <span class="card-tag" id="projTag">0/6</span>
+        </div>
+        <div class="card-body"><div id="projectTaskList"></div></div>
+      </div>
+
+      <div style="font-size:13px;color:#999;padding:8px 4px;font-weight:500;">⚙️ 设置</div>
+      <div class="card">
+        <div class="settings-row" onclick="showNameModal()">
+          <span class="s-icon">👦</span><span>孩子名字</span>
+          <span class="s-hint" id="settingsNameHint">未设置</span><span class="s-arrow">›</span>
+        </div>
+        <div class="settings-row" onclick="showToast('账号：' + (currentUserEmail || '游客'))">
+          <span class="s-icon">👤</span><span>当前账号</span>
+          <span class="s-hint" id="settingsEmailHint" style="font-size:11px;">-</span><span class="s-arrow">›</span>
+        </div>
+        <div class="settings-row" onclick="manualSave()">
+          <span class="s-icon">💾</span><span>手动保存</span>
+          <span class="s-hint" id="lastSaveHint" style="font-size:12px;">-</span><span class="s-arrow">›</span>
+        </div>
+        <div class="settings-row" onclick="syncNow()">
+          <span class="s-icon">☁️</span><span>强制云端同步</span>
+          <span class="s-hint" id="syncHint" style="font-size:12px;">-</span><span class="s-arrow">›</span>
+        </div>
+        <div class="settings-row" onclick="exportData()">
+          <span class="s-icon">📤</span><span>导出打卡数据</span><span class="s-arrow">›</span>
+        </div>
+        <div class="settings-row" onclick="logout()">
+          <span class="s-icon">🚪</span><span>退出登录</span><span class="s-arrow">›</span>
+        </div>
+        <div class="settings-row danger" onclick="resetAll()">
+          <span class="s-icon">🗑️</span><span>重置全部记录</span><span class="s-arrow">›</span>
+        </div>
+      </div>
+
+      <div style="text-align:center;padding:16px;font-size:12px;color:#ccc;" id="footerText">
+        🌞 一升二暑假打卡 · 云端自动同步
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <div class="tab-item active" onclick="switchTab('today')">
+      <span class="tab-icon-large">✅</span><span class="tab-label">今日打卡</span>
+    </div>
+    <div class="tab-item" onclick="switchTab('maps')">
+      <span class="tab-icon-large">🗺️</span><span class="tab-label">打卡地图</span>
+    </div>
+    <div class="tab-item" onclick="switchTab('more')">
+      <span class="tab-icon-large">📋</span><span class="tab-label">任务中心</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Name Modal -->
+<div class="modal-backdrop" id="nameModal">
+  <div class="modal-box">
+    <div class="modal-title">✏️ 设置孩子名字</div>
+    <input class="modal-input" id="nameInput" type="text" placeholder="输入孩子的名字" maxlength="20">
+    <div class="modal-buttons">
+      <button class="modal-btn cancel" onclick="closeNameModal()">取消</button>
+      <button class="modal-btn confirm" onclick="saveChildName()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  暑假打卡 - 全新重写版本
+//  设计原则：
+//  1. 本地数据优先（localStorage），云端为同步辅助
+//  2. 数据合并采用"并集"策略，绝不丢失任何打卡记录
+//  3. 游客模式可直接使用，无需登录
+//  4. 记住密码功能，自动填充并尝试自动登录
+// ============================================================
+
+// ===== Supabase 配置 =====
+var SUPABASE_URL = 'https://ewgmyhmaoszgjcoyiycu.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_ULEqZLzuKD4Le7a3J-ULFA_4o8T5GmC';
+var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+});
+
+// ===== 常量 =====
+var MAP_DAYS = 45;
+var SUMMER_START = '2026-07-11';
+// 使用全新的存储键，避免和历史数据冲突
+var DATA_KEY = 'summer_checkin_data_v3';
+var NAME_KEY = 'summer_checkin_name_v3';
+var SAVE_TIME_KEY = 'summer_checkin_save_time_v3';
+var CRED_KEY = 'summer_checkin_creds_v3';
+var weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+
+// ===== 任务定义 =====
+var mapConfigs = [
+  { key: 'readMap',        name: '阅读',     icon: '📖', color: '#4ecdc4' },
+  { key: 'oralMap',        name: '口算',     icon: '🧮', color: '#ff6a88' },
+  { key: 'vertMap',        name: '竖式',     icon: '📝', color: '#f4a261' },
+  { key: 'engMap',         name: '英语闯关', icon: '🔤', color: '#5b8def' },
+  { key: 'cnPreviewMap',   name: '语文预习', icon: '📺', color: '#9b59b6' },
+  { key: 'mathPreviewMap', name: '数学预习', icon: '📺', color: '#2ecc71' },
+  { key: 'engPreviewMap',  name: '英语预习', icon: '📺', color: '#3498db' },
+  { key: 'engPhonicsMap',  name: '自然拼读', icon: '📺', color: '#e74c3c' },
+  { key: 'ropeMap',        name: '跳绳',     icon: '🪢', color: '#e67e22' },
+];
+
+var dailyTasks = [
+  { id: 'd1',  name: '口算10道',    detail: '100以内加减法，使用口算本',   subject: 'math',     subName: '数学', mapKey: 'oralMap' },
+  { id: 'd2',  name: '竖式计算5道', detail: '限时10分钟，使用小袁AI',       subject: 'math',     subName: '数学', mapKey: 'vertMap' },
+  { id: 'd3',  name: '乘法口诀背诵', detail: '对口令/数物品，循序渐进',      subject: 'math',     subName: '数学', mapKey: null },
+  { id: 'd4',  name: '认字+审题练习', detail: '划关键词，文字翻译成数字',    subject: 'math',     subName: '数学', mapKey: null },
+  { id: 'd5',  name: '英语闯关',    detail: '"一起作业"每天解锁一关',       subject: 'eng',      subName: '英语', mapKey: 'engMap' },
+  { id: 'd6',  name: '阅读30分钟',  detail: '绘本/拼音童话/寓言故事',       subject: 'chinese',  subName: '语文', mapKey: 'readMap' },
+  { id: 'd7',  name: '语文预习',    detail: '二年级上册',                  subject: 'bilibili', subName: 'B站', mapKey: 'cnPreviewMap' },
+  { id: 'd8',  name: '数学预习',    detail: '二年级上册',                  subject: 'bilibili', subName: 'B站', mapKey: 'mathPreviewMap' },
+  { id: 'd9',  name: '英语预习',    detail: '二年级上册',                  subject: 'bilibili', subName: 'B站', mapKey: 'engPreviewMap' },
+  { id: 'd10', name: '自然拼读',    detail: '二年级上册',                  subject: 'bilibili', subName: 'B站', mapKey: 'engPhonicsMap' },
+  { id: 'd11', name: '跳绳练习',    detail: '目标1分钟完成200个',           subject: 'sport',    subName: '体育', mapKey: 'ropeMap' },
+];
+
+var weeklyTasks = [
+  { id: 'w1', name: '人民币购物实践', detail: '参与家庭购物：看标价→付钱→找零' },
+  { id: 'w2', name: '测量实践',       detail: '用尺子量家中物品，感知1厘米/1米' },
+  { id: 'w3', name: '方位认知',       detail: '复习前后左右，利用太阳认识东南西北' },
+  { id: 'w4', name: '数字书写规范',   detail: '规范数字书写，练习完整作答' },
+  { id: 'w5', name: '英语趣味拓展',   detail: '读RAZ/牛津树绘本，或听唱英文儿歌' },
+];
+
+var projectTasks = [
+  { id: 'p1', name: '45天阅读打卡',   detail: '坚持45天阅读打卡，绘本/拼音童话/寓言' },
+  { id: 'p2', name: '古诗配画 x1',    detail: '选一首古诗（如《静夜思》），给古诗配画' },
+  { id: 'p3', name: '暑假日记 x5',    detail: '写3-5句话，拼音搭配汉字，配小插画' },
+  { id: 'p4', name: '英语课本预习',   detail: '下载二上英语电子课本，翻看跟读' },
+  { id: 'p5', name: '审题习惯养成',   detail: '找有用信息→划关键词→翻译成数字' },
+  { id: 'p6', name: '乘法口诀表通关', detail: '暑假结束前能完整背诵九九乘法表' },
+];
+
+// ===== 全局状态 =====
+var data = {};
+var currentUser = null;
+var currentUserEmail = '';
+var authMode = 'login';
+var currentTab = 'today';
+var currentMapIdx = 0;
+var cloudSyncing = false;
+
+// ===== 工具函数 =====
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+function todayStr() {
+  var d = new Date();
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+}
+
+function getTodayStation() {
+  var start = new Date(SUMMER_START);
+  var diff = Math.floor((new Date() - start) / 86400000) + 1;
+  return Math.max(1, Math.min(diff, MAP_DAYS));
+}
+
+function formatTime(d) {
+  return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+// ============================================================
+//  数据层 - 核心逻辑
+// ============================================================
+
+function defaultData() {
+  var d = { daily: {}, weekly: {}, project: {}, dailyDate: '' };
+  mapConfigs.forEach(function(m) { d[m.key] = {}; });
+  return d;
+}
+
+function loadData() {
+  try {
+    var raw = localStorage.getItem(DATA_KEY);
+    if (raw) {
+      var d = JSON.parse(raw);
+      // 补全缺失的字段，保证数据结构完整
+      if (!d.daily) d.daily = {};
+      if (!d.weekly) d.weekly = {};
+      if (!d.project) d.project = {};
+      if (!d.dailyDate) d.dailyDate = '';
+      mapConfigs.forEach(function(m) { if (!d[m.key]) d[m.key] = {}; });
+      return d;
+    }
+  } catch(e) {
+    console.error('loadData 解析失败:', e);
+  }
+  return defaultData();
+}
+
+function saveData() {
+  try {
+    data.dailyDate = todayStr();
+    localStorage.setItem(DATA_KEY, JSON.stringify(data));
+    localStorage.setItem(SAVE_TIME_KEY, new Date().toISOString());
+
+    // 更新保存指示器
+    var indicator = document.getElementById('saveIndicator');
+    var saveText = document.getElementById('saveText');
+    if (indicator && saveText) {
+      if (currentUser) {
+        indicator.classList.add('cloud');
+        saveText.textContent = '已云端保存';
+      } else {
+        indicator.classList.remove('cloud');
+        saveText.textContent = '已自动保存';
+      }
+    }
+
+    // 已登录用户自动同步到云端（非阻塞）
+    if (currentUser && !cloudSyncing) {
+      pushToCloud().catch(function(e) {
+        console.error('后台云端同步失败:', e);
+      });
+    }
+  } catch(e) {
+    showToast('⚠️ 保存失败，请检查存储空间');
+    console.error('saveData 错误:', e);
+  }
+}
+
+function refreshDaily() {
+  // 跨天时清空今日任务（但保留地图打卡记录）
+  if (data.dailyDate !== todayStr()) {
+    data.daily = {};
+    data.dailyDate = todayStr();
+    saveData();
+  }
+}
+
+// ============================================================
+//  云端同步 - 数据合并策略（取并集，绝不丢失）
+// ============================================================
+
+function mergeData(cloudData, localData) {
+  if (!cloudData) return localData;
+  if (!localData) return cloudData;
+
+  var merged = JSON.parse(JSON.stringify(cloudData));
+
+  // 合并所有地图打卡数据（取并集：任一方打卡即为打卡）
+  mapConfigs.forEach(function(m) {
+    if (!merged[m.key]) merged[m.key] = {};
+    if (localData[m.key]) {
+      for (var k in localData[m.key]) {
+        if (localData[m.key][k]) merged[m.key][k] = true;
+      }
+    }
+  });
+
+  // 合并生活实践任务（取并集）
+  if (!merged.weekly) merged.weekly = {};
+  if (localData.weekly) {
+    for (var w in localData.weekly) {
+      if (localData.weekly[w]) merged.weekly[w] = true;
+    }
+  }
+
+  // 合并项目任务（取并集）
+  if (!merged.project) merged.project = {};
+  if (localData.project) {
+    for (var p in localData.project) {
+      if (localData.project[p]) merged.project[p] = true;
+    }
+  }
+
+  // 今日任务取日期较新的那份（避免覆盖今天的进度）
+  if (localData.dailyDate && (!merged.dailyDate || localData.dailyDate >= merged.dailyDate)) {
+    merged.daily = localData.daily;
+    merged.dailyDate = localData.dailyDate;
+  }
+
+  return merged;
+}
+
+async function syncFromCloud() {
+  if (!currentUser) return;
+  cloudSyncing = true;
+  updateSyncHint('同步中...');
+
+  try {
+    var result = await supabase
+      .from('checkin_data')
+      .select('data, updated_at')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    if (result.data && result.data.data) {
+      var cloudData = result.data.data;
+      var cloudTime = new Date(result.data.updated_at).getTime();
+      var localSaveStr = localStorage.getItem(SAVE_TIME_KEY);
+      var localTime = localSaveStr ? new Date(localSaveStr).getTime() : 0;
+
+      // 合并云端和本地数据（取并集）
+      var merged = mergeData(cloudData, data);
+      data = merged;
+      localStorage.setItem(DATA_KEY, JSON.stringify(data));
+
+      if (localTime > cloudTime) {
+        // 本地有更新（离线打卡过）→ 上传合并后的数据
+        await pushToCloud();
+        updateSyncHint('已合并上传 ' + formatTime(new Date()));
+      } else {
+        updateSyncHint('已同步 ' + formatTime(new Date(cloudTime)));
+      }
+    } else {
+      // 云端无数据 → 上传本地数据
+      await pushToCloud();
+      updateSyncHint('已上传 ' + formatTime(new Date()));
+    }
+  } catch(e) {
+    console.error('同步失败:', e);
+    updateSyncHint('同步失败');
+  }
+  cloudSyncing = false;
+}
+
+async function pushToCloud() {
+  if (!currentUser) return;
+  try {
+    var payload = JSON.parse(JSON.stringify(data));
+    payload.childName = localStorage.getItem(NAME_KEY) || '';
+
+    var existing = await supabase
+      .from('checkin_data')
+      .select('id')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    var nowISO = new Date().toISOString();
+
+    if (existing.data) {
+      await supabase
+        .from('checkin_data')
+        .update({ data: payload, updated_at: nowISO })
+        .eq('user_id', currentUser.id);
+    } else {
+      await supabase
+        .from('checkin_data')
+        .insert({ user_id: currentUser.id, data: payload, updated_at: nowISO });
+    }
+
+    localStorage.setItem(SAVE_TIME_KEY, nowISO);
+    updateSyncHint(formatTime(new Date()));
+  } catch(e) {
+    console.error('上传云端失败:', e);
+    updateSyncHint('上传失败');
+  }
+}
+
+function updateSyncHint(text) {
+  var el = document.getElementById('syncHint');
+  if (el) el.textContent = text;
+}
+
+function syncNow() {
+  if (!currentUser) { showToast('⚠️ 请先登录账号'); return; }
+  syncFromCloud().then(function() {
+    renderAll();
+    showToast('✅ 数据已同步');
+  });
+}
+
+// ============================================================
+//  登录 / 注册 / 游客
+// ============================================================
+
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  document.getElementById('loginTitle').textContent = authMode === 'login' ? '登录账号' : '注册账号';
+  document.getElementById('loginBtn').textContent = authMode === 'login' ? '登 录' : '注 册';
+  document.getElementById('switchText').textContent = authMode === 'login' ? '还没有账号？' : '已有账号？';
+  document.getElementById('switchLink').textContent = authMode === 'login' ? '注册新账号' : '去登录';
+  document.getElementById('loginError').textContent = '';
+
+  var savedHint = document.getElementById('savedHint');
+  if (savedHint) {
+    if (authMode === 'signup') {
+      savedHint.classList.remove('show');
+    } else {
+      var credStr = localStorage.getItem(CRED_KEY);
+      if (credStr) savedHint.classList.add('show');
+    }
+  }
+}
+
+async function handleLogin() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var password = document.getElementById('loginPassword').value;
+  var errorEl = document.getElementById('loginError');
+  var btn = document.getElementById('loginBtn');
+
+  if (!email) { errorEl.textContent = '请输入邮箱地址'; return; }
+  if (!password || password.length < 6) { errorEl.textContent = '密码至少6位'; return; }
+
+  errorEl.textContent = '';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="login-loading"></span>' + (authMode === 'login' ? '登录中...' : '注册中...');
+
+  try {
+    var result;
+    if (authMode === 'signup') {
+      result = await supabase.auth.signUp({ email: email, password: password });
+      if (result.error) throw result.error;
+      if (!result.data.session) {
+        errorEl.textContent = '注册成功！请检查邮箱确认链接';
+        btn.disabled = false;
+        btn.textContent = '注 册';
+        return;
+      }
+    } else {
+      result = await supabase.auth.signInWithPassword({ email: email, password: password });
+      if (result.error) throw result.error;
+    }
+
+    if (result.data.session) {
+      currentUser = result.data.user;
+      currentUserEmail = result.data.user.email;
+
+      // 根据「记住密码」复选框决定是否保存凭据
+      var rememberMe = document.getElementById('rememberMe');
+      if (rememberMe && rememberMe.checked) {
+        localStorage.setItem(CRED_KEY, JSON.stringify({ email: email, password: password }));
+        var savedHint = document.getElementById('savedHint');
+        if (savedHint) savedHint.classList.add('show');
+      } else {
+        localStorage.removeItem(CRED_KEY);
+      }
+
+      document.getElementById('loginOverlay').classList.add('hidden');
+      document.getElementById('settingsEmailHint').textContent = currentUserEmail;
+
+      // 同步云端数据
+      await syncFromCloud();
+      refreshDaily();
+      renderAll();
+      showToast('✅ 登录成功，数据已同步');
+    }
+  } catch(e) {
+    var msg = e.message || '操作失败';
+    if (msg.includes('Invalid login')) msg = '邮箱或密码错误';
+    if (msg.includes('already registered')) msg = '该邮箱已注册，请直接登录';
+    if (msg.includes('Email not confirmed')) msg = '请先到邮箱点击确认链接';
+    errorEl.textContent = msg;
+    btn.disabled = false;
+    btn.textContent = authMode === 'login' ? '登 录' : '注 册';
+  }
+}
+
+function enterAsGuest() {
+  currentUser = null;
+  currentUserEmail = '';
+  document.getElementById('loginOverlay').classList.add('hidden');
+  document.getElementById('settingsEmailHint').textContent = '游客';
+  refreshDaily();
+  renderAll();
+  showToast('👤 游客模式，数据保存在本设备');
+}
+
+async function logout() {
+  if (!confirm('确定要退出登录吗？本地数据会保留。')) return;
+  try { await supabase.auth.signOut(); } catch(e) {}
+  currentUser = null;
+  currentUserEmail = '';
+  localStorage.removeItem(CRED_KEY);
+
+  document.getElementById('loginOverlay').classList.remove('hidden');
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('loginBtn').disabled = false;
+  document.getElementById('loginBtn').textContent = '登 录';
+  document.getElementById('settingsEmailHint').textContent = '-';
+
+  var rememberCheckbox = document.getElementById('rememberMe');
+  var savedHint = document.getElementById('savedHint');
+  if (rememberCheckbox) rememberCheckbox.checked = true;
+  if (savedHint) savedHint.classList.remove('show');
+
+  showToast('已退出登录');
+}
+
+async function checkSession() {
+  // 1. 检查现有 Supabase session
+  try {
+    var result = await supabase.auth.getSession();
+    if (result.data.session) {
+      currentUser = result.data.user;
+      currentUserEmail = result.data.user.email;
+      document.getElementById('loginOverlay').classList.add('hidden');
+      document.getElementById('settingsEmailHint').textContent = currentUserEmail;
+      await syncFromCloud();
+      return true;
+    }
+  } catch(e) {
+    console.log('Session 检查失败:', e.message);
+  }
+
+  // 2. 尝试用保存的凭据自动登录
+  try {
+    var credStr = localStorage.getItem(CRED_KEY);
+    if (credStr) {
+      var creds = JSON.parse(credStr);
+      var loginResult = await supabase.auth.signInWithPassword({
+        email: creds.email,
+        password: creds.password
+      });
+      if (loginResult.data && loginResult.data.session) {
+        currentUser = loginResult.data.user;
+        currentUserEmail = loginResult.data.user.email;
+        document.getElementById('loginOverlay').classList.add('hidden');
+        document.getElementById('settingsEmailHint').textContent = currentUserEmail;
+        await syncFromCloud();
+        return true;
+      }
+    }
+  } catch(e) {
+    console.log('自动登录失败:', e.message);
+  }
+
+  // 3. 显示登录页，预填充已保存的凭据
+  var credStr2 = localStorage.getItem(CRED_KEY);
+  if (credStr2) {
+    try {
+      var creds2 = JSON.parse(credStr2);
+      document.getElementById('loginEmail').value = creds2.email || '';
+      document.getElementById('loginPassword').value = creds2.password || '';
+      document.getElementById('rememberMe').checked = true;
+      var savedHint = document.getElementById('savedHint');
+      if (savedHint) savedHint.classList.add('show');
+    } catch(e) {}
+  }
+  return false;
+}
+
+// ============================================================
+//  孩子名字
+// ============================================================
+
+function getChildName() {
+  return localStorage.getItem(NAME_KEY) || '';
+}
+
+function showNameModal() {
+  document.getElementById('nameInput').value = getChildName();
+  document.getElementById('nameModal').classList.add('show');
+  setTimeout(function() { document.getElementById('nameInput').focus(); }, 100);
+}
+
+function closeNameModal() {
+  document.getElementById('nameModal').classList.remove('show');
+}
+
+function saveChildName() {
+  var name = document.getElementById('nameInput').value.trim();
+  if (name) {
+    localStorage.setItem(NAME_KEY, name);
+    updateNameDisplay();
+    saveData();
+    showToast('已保存：' + name);
+  }
+  closeNameModal();
+}
+
+function updateNameDisplay() {
+  var name = getChildName();
+  var heroDate = document.getElementById('heroDate');
+  var hint = document.getElementById('settingsNameHint');
+  if (name) {
+    heroDate.textContent = '👦 ' + name + '的暑假';
+    hint.textContent = name;
+    hint.style.color = '#333';
+  } else {
+    heroDate.textContent = '2026年暑假';
+    hint.textContent = '未设置';
+    hint.style.color = '#999';
+  }
+}
+
+// ============================================================
+//  渲染层
+// ============================================================
+
+function countMap(key) {
+  if (!data[key]) return 0;
+  var c = 0;
+  for (var i = 1; i <= MAP_DAYS; i++) {
+    if (data[key]['m' + i]) c++;
+  }
+  return c;
+}
+
+function renderHero() {
+  var now = new Date();
+  document.getElementById('heroBigDate').textContent = (now.getMonth() + 1) + '月' + now.getDate() + '日';
+  document.getElementById('heroWeekday').textContent = weekdays[now.getDay()];
+  document.getElementById('dayNum').textContent = getTodayStation();
+
+  var done = 0;
+  dailyTasks.forEach(function(t) { if (data.daily[t.id]) done++; });
+  var total = dailyTasks.length;
+
+  document.getElementById('todayDone').textContent = done;
+  document.getElementById('todayTotal').textContent = total;
+  document.getElementById('dailyTag').textContent = done + '/' + total;
+
+  var pct = total > 0 ? done / total : 0;
+  document.getElementById('ringFill').style.strokeDashoffset = 175.93 * (1 - pct);
+  document.getElementById('ringText').innerHTML = done + '<small>/' + total + '</small>';
+
+  var enc = done === 0 ? '加油打卡吧！💪'
+          : done < total ? '已完成' + done + '项，继续！🔥'
+          : '全部完成！太棒了！🎉';
+  document.getElementById('encourageText').textContent = enc;
+
+  var totalMapDone = 0;
+  mapConfigs.forEach(function(m) { totalMapDone += countMap(m.key); });
+  document.getElementById('mapTotalTag').textContent = totalMapDone + '/' + (MAP_DAYS * mapConfigs.length);
+}
+
+function renderDaily() {
+  var container = document.getElementById('dailyTaskList');
+  container.innerHTML = '';
+  dailyTasks.forEach(function(t) {
+    var row = document.createElement('div');
+    row.className = 'task-row' + (data.daily[t.id] ? ' done' : '');
+    row.innerHTML =
+      '<div class="task-check">✓</div>' +
+      '<div class="task-info">' +
+        '<div class="task-name">' + t.name +
+        '<span class="task-badge badge-' + t.subject + '">' + t.subName + '</span></div>' +
+        '<div class="task-detail">' + t.detail + '</div>' +
+      '</div>';
+    row.onclick = function() {
+      data.daily[t.id] = !data.daily[t.id];
+      // 联动地图打卡
+      if (t.mapKey) {
+        if (!data[t.mapKey]) data[t.mapKey] = {};
+        data[t.mapKey]['m' + getTodayStation()] = data.daily[t.id];
+      }
+      saveData();
+      renderDaily();
+      renderHero();
+      renderMapSummary();
+      if (currentTab === 'maps') renderMapGrid();
+      if (data.daily[t.id]) {
+        var tip = '✅ ' + t.name + ' 已完成';
+        if (t.mapKey) {
+          var m = mapConfigs.filter(function(x) { return x.key === t.mapKey; })[0];
+          if (m) tip += ' · 已同步到「' + m.name + '」地图';
+        }
+        showToast(tip);
+      }
+    };
+    container.appendChild(row);
+  });
+}
+
+function renderMapSummary() {
+  var container = document.getElementById('mapSummaryGrid');
+  container.innerHTML = '';
+  mapConfigs.forEach(function(m) {
+    var done = countMap(m.key);
+    var pct = Math.round(done / MAP_DAYS * 100);
+    var card = document.createElement('div');
+    card.className = 'map-mini-card';
+    card.style.cursor = 'pointer';
+    card.innerHTML =
+      '<div class="map-mini-icon">' + m.icon + '</div>' +
+      '<div class="map-mini-info">' +
+        '<div class="map-mini-name">' + m.name + '</div>' +
+        '<div class="map-mini-num" style="color:' + m.color + ';">' + done +
+        '<span style="font-size:12px;color:#ccc;">/' + MAP_DAYS + '</span></div>' +
+        '<div class="map-mini-bar"><div class="map-mini-bar-fill" style="width:' + pct + '%;background:' + m.color + ';"></div></div>' +
+      '</div>';
+    card.onclick = function() {
+      currentMapIdx = mapConfigs.indexOf(m);
+      switchTab('maps');
+      renderMapSelector();
+      renderMapGrid();
+    };
+    container.appendChild(card);
+  });
+}
+
+function renderMapSelector() {
+  var container = document.getElementById('mapSelector');
+  container.innerHTML = '';
+  mapConfigs.forEach(function(m, idx) {
+    var tab = document.createElement('div');
+    tab.className = 'map-tab' + (idx === currentMapIdx ? ' active' : '');
+    tab.style.cssText = 'flex-shrink:0;padding:8px 14px;border-radius:20px;background:white;font-size:13px;color:#666;font-weight:500;cursor:pointer;border:2px solid transparent;transition:all 0.2s;display:flex;align-items:center;gap:4px;';
+    if (idx === currentMapIdx) {
+      tab.style.background = m.color;
+      tab.style.color = 'white';
+    }
+    tab.innerHTML = '<span style="font-size:15px;">' + m.icon + '</span><span>' + m.name + '</span>';
+    tab.onclick = function() {
+      currentMapIdx = idx;
+      renderMapSelector();
+      renderMapGrid();
+    };
+    container.appendChild(tab);
+  });
+}
+
+function renderMapGrid() {
+  var m = mapConfigs[currentMapIdx];
+  var container = document.getElementById('mapGridContainer');
+  container.innerHTML = '';
+  var todayStation = getTodayStation();
+
+  for (var i = 1; i <= MAP_DAYS; i++) {
+    var st = document.createElement('div');
+    st.className = 'map-station';
+    if (data[m.key] && data[m.key]['m' + i]) st.classList.add('checked');
+    if (i === todayStation) st.classList.add('today');
+    st.innerHTML = '<span class="star">⭐</span><span class="day-num">' + i + '</span>';
+    (function(idx, key, mapInfo) {
+      st.onclick = function() {
+        if (!data[key]) data[key] = {};
+        data[key]['m' + idx] = !data[key]['m' + idx];
+        saveData();
+        renderMapGrid();
+        renderMapSummary();
+        renderHero();
+        if (data[key]['m' + idx]) showToast('✅ ' + mapInfo.name + ' 第' + idx + '天打卡');
+      };
+    })(i, m.key, m);
+    container.appendChild(st);
+  }
+
+  var done = countMap(m.key);
+  var pct = Math.round(done / MAP_DAYS * 100);
+  document.getElementById('mapCurDone').textContent = done;
+  document.getElementById('mapCurName').innerHTML = m.icon + ' ' + m.name;
+  document.getElementById('mapCurFill').style.width = pct + '%';
+  document.getElementById('mapCurFill').style.background = m.color;
+}
+
+function renderWeekly() {
+  var container = document.getElementById('weeklyTaskList');
+  container.innerHTML = '';
+  weeklyTasks.forEach(function(t) {
+    var row = document.createElement('div');
+    row.className = 'task-row' + (data.weekly[t.id] ? ' done' : '');
+    row.innerHTML =
+      '<div class="task-check">✓</div>' +
+      '<div class="task-info">' +
+        '<div class="task-name">' + t.name + '</div>' +
+        '<div class="task-detail">' + t.detail + '</div>' +
+      '</div>';
+    row.onclick = function() {
+      data.weekly[t.id] = !data.weekly[t.id];
+      saveData();
+      renderWeekly();
+      if (data.weekly[t.id]) showToast('✅ ' + t.name);
+    };
+    container.appendChild(row);
+  });
+}
+
+function renderProjects() {
+  var container = document.getElementById('projectTaskList');
+  container.innerHTML = '';
+  var doneCount = 0;
+  projectTasks.forEach(function(t) {
+    if (data.project[t.id]) doneCount++;
+    var row = document.createElement('div');
+    row.className = 'task-row' + (data.project[t.id] ? ' done' : '');
+    row.innerHTML =
+      '<div class="task-check">✓</div>' +
+      '<div class="task-info">' +
+        '<div class="task-name">' + t.name + '</div>' +
+        '<div class="task-detail">' + t.detail + '</div>' +
+      '</div>';
+    row.onclick = function() {
+      data.project[t.id] = !data.project[t.id];
+      saveData();
+      renderProjects();
+      if (data.project[t.id]) showToast('✅ ' + t.name);
+    };
+    container.appendChild(row);
+  });
+  document.getElementById('projTag').textContent = doneCount + '/' + projectTasks.length;
+}
+
+function renderAll() {
+  updateNameDisplay();
+  renderHero();
+  renderDaily();
+  renderMapSummary();
+  renderMapSelector();
+  renderMapGrid();
+  renderWeekly();
+  renderProjects();
+  updateLastSaveTime();
+}
+
+// ============================================================
+//  Tab 切换
+// ============================================================
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-item').forEach(function(t) { t.classList.remove('active'); });
+  var titles = { today: '今日打卡', maps: '打卡地图', more: '任务中心' };
+  document.getElementById('navTitle').textContent = titles[tab];
+  var pageId = 'page' + tab.charAt(0).toUpperCase() + tab.slice(1);
+  document.getElementById(pageId).classList.add('active');
+  document.querySelectorAll('.tab-item')[{ today: 0, maps: 1, more: 2 }[tab]].classList.add('active');
+  document.querySelector('.content').scrollTop = 0;
+}
+
+// ============================================================
+//  Toast / 保存指示 / 状态栏
+// ============================================================
+
+var toastTimer;
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 2000);
+}
+
+function manualSave() {
+  saveData();
+  updateLastSaveTime();
+  showToast('✅ 数据已手动保存');
+}
+
+function updateLastSaveTime() {
+  var t = localStorage.getItem(SAVE_TIME_KEY);
+  var hint = document.getElementById('lastSaveHint');
+  var footer = document.getElementById('footerText');
+  if (t) {
+    var d = new Date(t);
+    var ts = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    if (hint) hint.textContent = ts;
+    if (footer) footer.textContent = '🌞 上次保存：' + ts + ' · 一升二暑假打卡';
+  }
+}
+
+function updateStatusTime() {
+  var n = new Date();
+  document.getElementById('statusTime').textContent = n.getHours() + ':' + pad(n.getMinutes());
+}
+
+// ============================================================
+//  导出 / 重置
+// ============================================================
+
+function exportData() {
+  var now = new Date();
+  var summary = '📊 暑假打卡数据汇总\n\n';
+  summary += '开始日期：' + SUMMER_START + '\n';
+  summary += '今日日期：' + (now.getMonth() + 1) + '月' + now.getDate() + '日\n';
+  summary += '暑假第' + getTodayStation() + '天/共45天\n\n';
+  summary += '--- 打卡地图进度 ---\n';
+  mapConfigs.forEach(function(m) {
+    summary += m.icon + ' ' + m.name + '：' + countMap(m.key) + '/' + MAP_DAYS + '天\n';
+  });
+  summary += '\n--- 今日任务 ---\n';
+  var dDone = 0;
+  dailyTasks.forEach(function(t) {
+    var status = data.daily[t.id] ? '✅' : '⬜';
+    if (data.daily[t.id]) dDone++;
+    summary += status + ' ' + t.name + '\n';
+  });
+  summary += '\n今日完成：' + dDone + '/' + dailyTasks.length + '\n';
+  showToast('数据已生成，可截图保存');
+  alert(summary);
+}
+
+function resetAll() {
+  if (confirm('确定要重置全部打卡记录吗？此操作不可撤销！')) {
+    data = defaultData();
+    saveData();
+    renderAll();
+    showToast('已重置全部记录');
+  }
+}
+
+// ============================================================
+//  键盘事件
+// ============================================================
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    if (!document.getElementById('loginOverlay').classList.contains('hidden')) {
+      handleLogin();
+    } else if (document.getElementById('nameModal').classList.contains('show')) {
+      saveChildName();
+    }
+  }
+});
+
+// 「记住密码」复选框监听
+document.addEventListener('DOMContentLoaded', function() {
+  var cb = document.getElementById('rememberMe');
+  var hint = document.getElementById('savedHint');
+  if (cb && hint) {
+    cb.addEventListener('change', function() {
+      if (!cb.checked) {
+        hint.classList.remove('show');
+      } else {
+        var credStr = localStorage.getItem(CRED_KEY);
+        if (credStr) hint.classList.add('show');
+      }
+    });
+  }
+});
+
+// ============================================================
+//  初始化
+// ============================================================
+
+data = loadData();
+refreshDaily();
+updateStatusTime();
+setInterval(updateStatusTime, 30000);
+updateNameDisplay();
+updateLastSaveTime();
+
+// 检查登录状态（自动登录），然后渲染
+checkSession().then(function(loggedIn) {
+  refreshDaily();
+  renderAll();
+  if (!loggedIn) {
+    showToast('💡 可直接打卡，或登录账号同步云端');
+  }
+}).catch(function() {
+  refreshDaily();
+  renderAll();
+});
+</script>
+
+</body>
+</html>
