@@ -1,0 +1,69 @@
+{
+  "蓝牙耳机": [
+    {
+      "ts": "2026-07-28 08:15:59",
+      "products": [
+        {
+          "name": "vivo 蓝牙耳机 正品包邮",
+          "price": 181.58,
+          "platform": "pdd"
+        },
+        {
+          "name": "蓝牙耳机 青春版 礼盒装",
+          "price": 528.03,
+          "platform": "jd"
+        },
+        {
+          "name": "戴尔 蓝牙耳机 标准版 学生必备",
+          "price": 953.41,
+          "platform": "jd"
+        },
+        {
+          "name": "蓝牙耳机 官方旗舰款",
+          "price": 965.7,
+          "platform": "pdd"
+        },
+        {
+          "name": "蓝牙耳机 快充版",
+          "price": 1120.08,
+          "platform": "pdd"
+        },
+        {
+          "name": "蓝牙耳机 Pro Max",
+          "price": 1127.42,
+          "platform": "taobao"
+        },
+        {
+          "name": "蓝牙耳机 2024 新品",
+          "price": 1203.98,
+          "platform": "taobao"
+        },
+        {
+          "name": "一加 蓝牙耳机 高配版 国行正品",
+          "price": 1529.66,
+          "platform": "jd"
+        },
+        {
+          "name": "戴尔 蓝牙耳机 官方旗舰款",
+          "price": 1535.9,
+          "platform": "taobao"
+        },
+        {
+          "name": "蓝牙耳机 国行正品",
+          "price": 1819.04,
+          "platform": "pdd"
+        },
+        {
+          "name": "蓝牙耳机 大容量长续航",
+          "price": 1855.13,
+          "platform": "jd"
+        },
+        {
+          "name": "蓝牙耳机 高配版",
+          "price": 1996.41,
+          "platform": "taobao"
+        }
+      ]
+    }
+  ]
+}

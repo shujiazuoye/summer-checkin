@@ -1,0 +1,29 @@
+{
+  "机械键盘": [
+    {
+      "ts": "2026-07-28 08:19:51",
+      "products": [
+        {
+          "name": "荣耀 机械键盘 高配版 正品包邮",
+          "price": 211.9,
+          "platform": "pdd"
+        },
+        {
+          "name": "iQOO 机械键盘 增强版",
+          "price": 591.51,
+          "platform": "jd"
+        },
+        {
+          "name": "荣耀 机械键盘 尊享版 Pro Max",
+          "price": 1237.86,
+          "platform": "pdd"
+        },
+        {
+          "name": "三星 机械键盘 快充版",
+          "price": 1587.33,
+          "platform": "pdd"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电商商品价格自动化采集与对比工具</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+  .tag { padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .tag-best { background: #fef3c7; color: #b45309; }
+  .tag-popular { background: #fee2e2; color: #b91c1c; }
+  .tag-premium { background: #ddd6fe; color: #6d28d9; }
+  .plat-jd { color:#e1251b } .plat-taobao { color:#ff6a00 } .plat-pdd { color:#e02e24 }
+  table { border-collapse: collapse; width:100%; }
+  th, td { padding: 7px 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 13px; }
+  th { background:#f9fafb; font-weight:600; color:#374151; position: sticky; top:0; }
+  tr:hover td { background:#f9fafb; }
+  .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+  .fade-in { animation: fade .4s ease; }
+  @keyframes fade { from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none} }
+  .arch-arrow { color:#9ca3af; font-weight:700; }
+  .loader { border:3px solid #e5e7eb; border-top:3px solid #3b82f6; border-radius:50%; width:18px; height:18px; animation:spin 1s linear infinite; display:inline-block; }
+  @keyframes spin { to { transform: rotate(360deg) } }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+<div class="max-w-7xl mx-auto px-4 py-6">
+
+  <!-- 标题 -->
+  <header class="mb-6">
+    <h1 class="text-2xl font-bold text-slate-900">🛒 电商商品价格自动化采集与对比工具</h1>
+    <p class="text-sm text-slate-500 mt-1">京东 · 淘宝 · 拼多多 多平台关键词采集 → 清洗去重 → 排序对比 → 性价比推荐 → 可视化</p>
+  </header>
+
+  <!-- 架构设计 -->
+  <section class="card p-5 mb-6">
+    <h2 class="font-semibold text-slate-900 mb-3">整体架构设计</h2>
+    <div class="flex flex-wrap items-center gap-2 text-sm">
+      <span class="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">① 关键词输入</span>
+      <span class="arch-arrow">→</span>
+      <span class="px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-200">② 多平台采集器<br><span class="text-[11px] text-slate-500">JD/Taobao/PDD · 真实HTTP+兜底</span></span>
+      <span class="arch-arrow">→</span>
+      <span class="px-3 py-2 bg-cyan-50 text-cyan-700 rounded-lg border border-cyan-200">③ 数据清洗<br><span class="text-[11px] text-slate-500">归一化/去重/过滤</span></span>
+      <span class="arch-arrow">→</span>
+      <span class="px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-200">④ 对比排序<br><span class="text-[11px] text-slate-500">价格升序/性价比分</span></span>
+      <span class="arch-arrow">→</span>
+      <span class="px-3 py-2 bg-amber-50 text-amber-700 rounded-lg border border-amber-200">⑤ 推荐标注<br><span class="text-[11px] text-slate-500">best/popular/premium</span></span>
+      <span class="arch-arrow">→</span>
+      <span class="px-3 py-2 bg-rose-50 text-rose-700 rounded-lg border border-rose-200">⑥ 可视化<br><span class="text-[11px] text-slate-500">对比/分布/趋势</span></span>
+    </div>
+    <p class="text-xs text-slate-500 mt-3">
+      数据获取核心逻辑：各平台采集器先以浏览器 UA 发起真实 HTTP 请求并解析 HTML/JSON；若被反爬拦截（跳登录、空结果、超时），自动回退到以关键词为种子的确定性模拟数据，保证工具在任何环境下可直接运行。真实接入时仅需在采集器注入 cookies/proxy 即可切换为纯真实采集。
+    </p>
+  </section>
+
+  <!-- 现场运行 -->
+  <section class="card p-5 mb-6">
+    <h2 class="font-semibold text-slate-900 mb-3">🚀 现场运行（输入关键词后即时采集对比）</h2>
+    <div class="flex flex-wrap items-end gap-3">
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">关键词</label>
+        <input id="kwInput" type="text" value="蓝牙耳机" placeholder="如：蓝牙耳机"
+               class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-60 focus:outline-none focus:ring-2 focus:ring-blue-300">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">每平台条数</label>
+        <input id="limitInput" type="number" value="6" min="1" max="20"
+               class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-blue-300">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">平台</label>
+        <div id="platChecks" class="flex gap-2 text-sm">
+          <label class="flex items-center gap-1"><input type="checkbox" value="jd" checked> <span class="plat-jd">京东</span></label>
+          <label class="flex items-center gap-1"><input type="checkbox" value="taobao" checked> <span class="plat-taobao">淘宝</span></label>
+          <label class="flex items-center gap-1"><input type="checkbox" value="pdd" checked> <span class="plat-pdd">拼多多</span></label>
+        </div>
+      </div>
+      <button id="runBtn" onclick="runSearch()"
+              class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-lg transition">
+        开始采集对比
+      </button>
+      <span id="runStatus" class="text-xs text-slate-500"></span>
+    </div>
+  </section>
+
+  <!-- 数据示例 -->
+  <section class="card p-5 mb-6">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-semibold text-slate-900">📋 数据示例（页面初始化预置）</h2>
+      <span class="text-xs text-slate-400" id="sampleMeta"></span>
+    </div>
+    <p class="text-xs text-slate-500 mb-2">采集后 <b>未清洗</b> 的原始数据示例（展示字段与可能存在的重复/异常）：</p>
+    <div class="overflow-x-auto max-h-64 mb-4 overflow-y-auto border rounded-lg">
+      <table id="rawTable"><thead>
+        <tr><th>平台</th><th>商品名称</th><th>价格</th><th>销量</th><th>店铺</th><th>评分</th><th>链接</th></tr>
+      </thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <!-- 结果区域 (现场运行 & 示例共用) -->
+  <section id="resultSection" class="space-y-6">
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold text-slate-900">📊 结果示例（清洗去重 → 排序 → 性价比推荐）</h2>
+        <span id="resultMeta" class="text-xs text-slate-400"></span>
+      </div>
+      <div id="summaryBoxes" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4"></div>
+      <div class="overflow-x-auto max-h-96 overflow-y-auto border rounded-lg">
+        <table id="resultTable"><thead>
+          <tr><th>排名</th><th>平台</th><th>商品名称</th><th>价格</th><th>销量</th><th>评分</th><th>店铺</th><th>性价比分</th><th>推荐</th><th>链接</th></tr>
+        </thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <!-- 图表 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card p-4"><h3 class="text-sm font-semibold mb-2 text-slate-700">商品价格横向对比（升序）</h3><div class="relative h-72"><canvas id="chartCompare"></canvas></div></div>
+      <div class="card p-4"><h3 class="text-sm font-semibold mb-2 text-slate-700">各平台价格区间（最低/均价/最高）</h3><div class="relative h-72"><canvas id="chartPlatform"></canvas></div></div>
+      <div class="card p-4"><h3 class="text-sm font-semibold mb-2 text-slate-700">价格-销量分布（气泡=店铺评分）</h3><div class="relative h-72"><canvas id="chartScatter"></canvas></div></div>
+      <div class="card p-4"><h3 class="text-sm font-semibold mb-2 text-slate-700">价格趋势（多次采集历史）</h3><div class="relative h-72"><canvas id="chartTrend"></canvas></div></div>
+    </div>
+  </section>
+
+  <footer class="text-center text-xs text-slate-400 mt-8 pb-4">
+    价格采集对比工具 · 命令行: <code class="bg-slate-100 px-1 rounded">python -m price_comparator.cli search "关键词"</code>
+  </footer>
+</div>
+
+<script>
+const PLAT_COLOR = { jd:'#e1251b', taobao:'#ff6a00', pdd:'#e02e24' };
+const PLAT_NAME  = { jd:'京东', taobao:'淘宝', pdd:'拼多多' };
+const TAG_CN = { best_value:'★性价比之选', popular:'🔥爆款', premium:'💎优选' };
+const charts = {};
+
+function destroyCharts() {
+  Object.values(charts).forEach(c => { try { c.destroy(); } catch(e){} });
+}
+
+function fmt(n, d=2) { return Number(n).toLocaleString('zh-CN', {minimumFractionDigits:d, maximumFractionDigits:d}); }
+function short(s, n=24) { s=String(s).replace(/\s/g,''); return s.length<=n ? s : s.slice(0,n)+'…'; }
+
+function renderRaw(products) {
+  const tb = document.querySelector('#rawTable tbody');
+  tb.innerHTML = '';
+  if (!products || !products.length) { tb.innerHTML = '<tr><td colspan="7" class="text-center text-slate-400 py-4">暂无</td></tr>'; return; }
+  products.forEach(p => {
+    tb.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td><span class="plat-${p.platform}">${PLAT_NAME[p.platform]||p.platform}</span></td>
+        <td>${short(p.name,30)}</td>
+        <td>¥${fmt(p.price)}</td>
+        <td>${p.sales}</td>
+        <td>${p.shop_name||'-'}</td>
+        <td>${p.shop_rating||'-'}</td>
+        <td>${p.url?`<a href="${p.url}" target="_blank" class="text-blue-500">查看</a>`:'-'}</td>
+      </tr>`);
+  });
+}
+
+function renderSummary(summary) {
+  const box = document.getElementById('summaryBoxes');
+  if (!summary || !summary.length) { box.innerHTML = '<div class="text-xs text-slate-400">无平台数据</div>'; return; }
+  box.innerHTML = summary.map(s => `
+    <div class="border rounded-lg p-3 bg-slate-50">
+      <div class="flex items-center justify-between">
+        <span class="font-semibold plat-${s.platform}">${s.platform_name}</span>
+        <span class="text-xs text-slate-400">${s.count} 件</span>
+      </div>
+      <div class="text-xs text-slate-600 mt-2 grid grid-cols-2 gap-1">
+        <span>最低 <b class="text-emerald-600">¥${fmt(s.min_price)}</b></span>
+        <span>均价 <b>¥${fmt(s.avg_price)}</b></span>
+        <span>最高 <b class="text-rose-600">¥${fmt(s.max_price)}</b></span>
+        <span>评分 <b>${fmt(s.avg_rating,1)}</b></span>
+        <span class="col-span-2">总销量 <b>${s.total_sales.toLocaleString()}</b></span>
+      </div>
+    </div>`).join('');
+}
+
+function renderResult(result, label) {
+  document.getElementById('resultMeta').textContent = label || '';
+  renderSummary(result.summary);
+  const tb = document.querySelector('#resultTable tbody');
+  tb.innerHTML = '';
+  result.products.forEach(p => {
+    const tag = p.recommend_tag ? `<span class="tag tag-${p.recommend_tag==='best_value'?'best':p.recommend_tag==='popular'?'popular':'premium'}">${TAG_CN[p.recommend_tag]||p.recommend_tag}</span>` : '';
+    tb.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td>${p.price_rank}</td>
+        <td><span class="plat-${p.platform}">${PLAT_NAME[p.platform]||p.platform}</span></td>
+        <td>${short(p.name,30)}</td>
+        <td class="font-medium">¥${fmt(p.price)}</td>
+        <td>${p.sales.toLocaleString()}</td>
+        <td>${fmt(p.shop_rating,1)}</td>
+        <td>${short(p.shop_name,14)}</td>
+        <td>${fmt(p.value_score,3)}</td>
+        <td>${tag}</td>
+        <td>${p.url?`<a href="${p.url}" target="_blank" class="text-blue-500 text-xs">链接</a>`:'-'}</td>
+      </tr>`);
+  });
+}
+
+function renderCompareChart(products) {
+  const ps = [...products].sort((a,b)=>a.price-b.price).slice(0,20);
+  const ctx = document.getElementById('chartCompare');
+  charts.compare = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ps.map(p=>short(p.name,16)),
+      datasets: [{
+        label: '价格 (元)',
+        data: ps.map(p=>p.price),
+        backgroundColor: ps.map(p=>PLAT_COLOR[p.platform]||'#888'),
+        borderRadius: 3,
+      }]
+    },
+    options: { indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true}}, maintainAspectRatio:false }
+  });
+}
+
+function renderPlatformChart(summary) {
+  const ctx = document.getElementById('chartPlatform');
+  charts.platform = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: summary.map(s=>s.platform_name),
+      datasets: [
+        { label:'最低价', data:summary.map(s=>s.min_price), backgroundColor:'#4caf50' },
+        { label:'均价', data:summary.map(s=>s.avg_price), backgroundColor:'#2196f3' },
+        { label:'最高价', data:summary.map(s=>s.max_price), backgroundColor:'#f44336' },
+      ]
+    },
+    options: { maintainAspectRatio:false, scales:{y:{beginAtZero:true}} }
+  });
+}
+
+function renderScatterChart(products) {
+  const ctx = document.getElementById('chartScatter');
+  const datasets = Object.keys(PLAT_COLOR).map(plat => ({
+    label: PLAT_NAME[plat],
+    data: products.filter(p=>p.platform===plat).map(p=>({x:p.price, y:Math.max(p.sales,1), r: 4 + (p.shop_rating/5)*8, recommend:p.recommend_tag})),
+    backgroundColor: PLAT_COLOR[plat]+'99',
+  }));
+  charts.scatter = new Chart(ctx, {
+    type: 'bubble',
+    data: { datasets },
+    options: {
+      maintainAspectRatio:false,
+      scales:{ x:{type:'log', title:{display:true,text:'价格(元)'}}, y:{type:'log', title:{display:true,text:'销量'}} },
+      plugins:{ tooltip:{ callbacks:{ label:(c)=>`${c.dataset.label} ¥${c.raw.x} 销量${c.raw.y} 评分${(c.raw.r).toFixed(1)}` } } }
+    }
+  });
+}
+
+function renderTrendChart(snapshots, keyword) {
+  const ctx = document.getElementById('chartTrend');
+  if (!snapshots || snapshots.length === 0) {
+    charts.trend = new Chart(ctx, { type:'bar', data:{labels:['无历史'],datasets:[{data:[0]}]}, options:{maintainAspectRatio:false,plugins:{title:{display:true,text:'暂无采集历史, 运行一次后可生成趋势'}}} });
+    return;
+  }
+  // 取最近一次快照中价格最低的 Top5 商品名作为追踪对象
+  const last = snapshots[snapshots.length-1].products;
+  const targets = [...last].sort((a,b)=>a.price-b.price).slice(0,5).map(p=>p.name);
+  const datasets = targets.map((name,i) => ({
+    label: short(name,16),
+    data: snapshots.map(s => {
+      const m = s.products.find(p=>p.name===name);
+      return m ? m.price : null;
+    }),
+    borderColor: ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6'][i],
+    fill: false, tension: 0.2, spanGaps: true,
+  }));
+  charts.trend = new Chart(ctx, {
+    type: 'line',
+    data: { labels: snapshots.map(s=>s.ts.slice(5,16)), datasets },
+    options: { maintainAspectRatio:false, scales:{y:{beginAtZero:false}}, plugins:{title:{display:true,text:`[${keyword}] Top5 最低价趋势 (${snapshots.length}次)`}} }
+  });
+}
+
+function renderAllCharts(result, snapshots, keyword) {
+  destroyCharts();
+  renderCompareChart(result.products);
+  renderPlatformChart(result.summary);
+  renderScatterChart(result.products);
+  renderTrendChart(snapshots, keyword || result.keyword);
+}
+
+// 初始化: 加载示例
+async function loadSample() {
+  try {
+    const res = await fetch('/api/sample');
+    const data = await res.json();
+    if (data.raw) {
+      document.getElementById('sampleMeta').textContent = `关键词: ${data.raw.keyword} · ${data.raw.products.length} 条原始数据`;
+      renderRaw(data.raw.products);
+    }
+    if (data.result) {
+      renderResult(data.result, `示例 · 关键词「${data.result.keyword}」· 来源 ${JSON.stringify(data.result.meta.sources)}`);
+      const snaps = (data.history && data.history[data.result.keyword]) || [];
+      renderAllCharts(data.result, snaps, data.result.keyword);
+    }
+  } catch(e) {
+    document.getElementById('sampleMeta').textContent = '示例加载失败: ' + e.message;
+  }
+}
+
+// 现场运行
+async function runSearch() {
+  const keyword = document.getElementById('kwInput').value.trim();
+  const limit = document.getElementById('limitInput').value;
+  const platforms = [...document.querySelectorAll('#platChecks input:checked')].map(c=>c.value);
+  const status = document.getElementById('runStatus');
+  const btn = document.getElementById('runBtn');
+  if (!keyword) { alert('请输入关键词'); return; }
+  if (!platforms.length) { alert('请至少选择一个平台'); return; }
+
+  btn.disabled = true; btn.innerHTML = '<span class="loader"></span> 采集中…';
+  status.textContent = '正在采集 ' + platforms.map(p=>PLAT_NAME[p]).join('/') + ' …';
+  try {
+    const res = await fetch('/api/search', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ keyword, platforms, limit:Number(limit) })
+    });
+    const data = await res.json();
+    if (!data.ok) { alert(data.error||'采集失败'); return; }
+    const r = data.result;
+    renderResult(r, `现场运行 · 关键词「${r.keyword}」· ${r.meta.total_raw}→${r.meta.total_clean} 条 · ${r.meta.elapsed_sec}s · 来源 ${JSON.stringify(r.meta.sources)}`);
+    status.textContent = `完成: ${r.meta.total_clean} 件, 耗时 ${r.meta.elapsed_sec}s`;
+
+    // 拉取趋势
+    let snaps = [];
+    try {
+      const t = await fetch('/api/trend?keyword='+encodeURIComponent(keyword));
+      const tj = await t.json();
+      snaps = tj.snapshots || [];
+    } catch(e){}
+    renderAllCharts(r, snaps, keyword);
+  } catch(e) {
+    alert('请求失败: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '开始采集对比';
+  }
+}
+
+window.addEventListener('DOMContentLoaded', loadSample);
+</script>
+</body>
+</html>
